@@ -1,3 +1,3 @@
 package io.maestro.model.tasks
 
-interface Task
+interface Step
