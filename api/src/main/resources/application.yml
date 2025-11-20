@@ -1,0 +1,18 @@
+quarkus:
+  application:
+    name: maestro-api
+
+  http:
+    port: 8080
+
+  # REST Configuration
+  rest:
+    # Enable YAML content type
+    media-types:
+      - application/x-yaml
+      - application/yaml
+
+  log:
+    level: INFO
+    category:
+      "io.maestro": DEBUG
