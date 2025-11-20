@@ -1,0 +1,3 @@
+package io.maestro.model.steps
+
+interface Task : Step
