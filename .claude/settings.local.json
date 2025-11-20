@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(mvn clean install:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn kotlin:compile:*)",
+      "Bash(mvn compile:*)",
+      "Bash(mvn install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
