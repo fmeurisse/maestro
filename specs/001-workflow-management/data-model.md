@@ -30,7 +30,7 @@ import java.time.Instant
  * @property version Sequential version number (1, 2, 3...)
  * @property name Human-readable workflow name
  * @property description Workflow purpose and behavior description (max 1000 chars)
- * @property steps Parsed workflow step tree
+ * @property steps List of steps to execute sequentially
  * @property active Whether this revision is active for execution
  * @property createdAt UTC timestamp when revision was created (immutable)
  * @property updatedAt UTC timestamp of last modification (activation, deactivation, update)
@@ -41,7 +41,7 @@ data class WorkflowRevision(
     val version: Int,
     val name: String,
     val description: String,
-    val steps: Step,
+    val steps: List<Step>,
     val active: Boolean = false,
     val createdAt: Instant,
     val updatedAt: Instant
@@ -62,12 +62,12 @@ data class WorkflowRevision(
             version: Int,
             name: String,
             description: String,
-            steps: Step,
+            steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
             updatedAt: Instant = createdAt
         ): WorkflowRevision {
-            validate(namespace, id, version, name, description)
+            validate(namespace, id, version, name, description, steps)
             return WorkflowRevision(
                 namespace, id, version, name, description,
                 steps, active, createdAt, updatedAt
@@ -79,7 +79,8 @@ data class WorkflowRevision(
             id: String,
             version: Int,
             name: String,
-            description: String
+            description: String,
+            steps: List<Step>
         ) {
             if (namespace.isBlank()) {
                 throw ValidationException("Namespace must not be blank")
@@ -107,6 +108,9 @@ data class WorkflowRevision(
                 throw ValidationException(
                     "Description must not exceed $MAX_DESCRIPTION_LENGTH characters"
                 )
+            }
+            if (steps.isEmpty()) {
+                throw ValidationException("Steps list must not be empty")
             }
         }
     }
@@ -163,7 +167,7 @@ data class WorkflowRevisionWithSource(
     val version: Long get() = revision.version
     val name: String get() = revision.name
     val description: String get() = revision.description
-    val steps: Step get() = revision.steps
+    val steps: List<Step> get() = revision.steps
     val active: Boolean get() = revision.active
     val createdAt: Instant get() = revision.createdAt
     val updatedAt: Instant get() = revision.updatedAt
@@ -181,7 +185,7 @@ data class WorkflowRevisionWithSource(
             name: String,
             description: String,
             yamlSource: String,
-            steps: Step,
+            steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
             updatedAt: Instant = createdAt
@@ -232,7 +236,10 @@ val withSource = WorkflowRevisionWithSource.create(
     name = "My Workflow",
     description = "Description",
     yamlSource = "namespace: prod\n...",
-    steps = parsedSteps
+    steps = listOf(
+        LogTask("Starting workflow"),
+        WorkTask("process-payment", emptyMap())
+    )
 )
 
 // List workflows - YAML source not needed
@@ -254,13 +261,13 @@ repository.update(activated)
 - `name`: NOT NULL, NOT BLANK, max 255 chars
 - `description`: NOT NULL, max 1000 chars
 - `yamlSource`: NOT NULL, NOT BLANK
-- `steps`: NOT NULL, valid Step implementation
+- `steps`: NOT NULL, NOT EMPTY, list of valid Step implementations
 - `createdAt`: NOT NULL, immutable after creation
 - `updatedAt`: NOT NULL, updated on every modification
 
 **Immutability Contract**:
 - Fields that CANNOT change after creation: `namespace`, `id`, `version`, `createdAt`
-- Fields that CAN change (inactive only): `description`, `yamlSource`, `steps`
+- Fields that CAN change (inactive only): `description`, `yamlSource`, `steps` (add/remove/reorder steps in list)
 - Fields that CAN change (any state): `active`, `updatedAt`
 
 **State Transitions**:
@@ -542,14 +549,11 @@ ON workflow_revisions USING GIN(revision_data jsonb_path_ops);
   "version": 1,
   "name": "Payment Processing",
   "description": "Handles payment processing workflow",
-  "yamlSource": "namespace: production\nid: payment-processing\nsteps:\n  type: Sequence\n  ...",
-  "steps": {
-    "type": "Sequence",
-    "steps": [
-      {"type": "LogTask", "message": "Starting"},
-      {"type": "WorkTask", "name": "process-payment", "parameters": {}}
-    ]
-  },
+  "yamlSource": "namespace: production\nid: payment-processing\nsteps:\n  - type: LogTask\n    message: Starting\n  - type: WorkTask\n    name: process-payment\n    parameters: {}",
+  "steps": [
+    {"type": "LogTask", "message": "Starting"},
+    {"type": "WorkTask", "name": "process-payment", "parameters": {}}
+  ],
   "active": false,
   "createdAt": "2025-11-21T10:30:00Z",
   "updatedAt": "2025-11-21T10:30:00Z"
@@ -688,9 +692,10 @@ Repository.findById(revisionId) ? PostgreSQL SELECT revision_data
 | WorkflowRevision | name | NOT NULL, NOT BLANK, max 255 |
 | WorkflowRevision | description | NOT NULL, max 1000 |
 | WorkflowRevision | yamlSource | NOT NULL, NOT BLANK |
-| WorkflowRevision | steps | NOT NULL, valid Step tree |
-| Step Tree | Depth | Recommended max 10 levels (prevent stack overflow) |
-| Step Tree | Node Count | Reasonable limit (e.g., 1000 nodes per workflow) |
+| WorkflowRevision | steps | NOT NULL, NOT EMPTY, list of valid Steps |
+| WorkflowRevision | steps (list) | Must contain at least 1 step |
+| Step Tree | Depth | Recommended max 10 levels for nested orchestration (prevent stack overflow) |
+| Step Tree | Node Count | Reasonable limit (e.g., 1000 nodes total across all steps per workflow) |
 
 **Immutability Enforcement**:
 - `namespace`, `id`, `version`, `createdAt`: NEVER change after creation

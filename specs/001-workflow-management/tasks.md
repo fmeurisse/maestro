@@ -83,7 +83,7 @@
 
 - [X] T024 [P] Create DatabaseConfig for JDBI configuration (plugins/postgres-repository/src/main/kotlin/io/maestro/plugins/postgres/config/DatabaseConfig.kt)
 - [X] T025 [P] Create PostgresWorkflowRevisionRepository with dual storage queries (plugins/postgres-repository/src/main/kotlin/io/maestro/plugins/postgres/PostgresWorkflowRevisionRepository.kt)
-- [ ] T026 [P] Write repository integration tests with Testcontainers (plugins/postgres-repository/src/test/kotlin/io/maestro/plugins/postgres/PostgresWorkflowRevisionRepositoryTest.kt)
+- [X] T026 [P] Write repository integration tests with Testcontainers (plugins/postgres/src/test/kotlin/io/maestro/plugins/postgres/PostgresWorkflowRevisionRepositoryTest.kt)
 
 **Dependencies**: T007-T009 → T024, T018 → T025, T025 → T026
 
