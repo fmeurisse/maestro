@@ -1,8 +1,4 @@
 {
-  "version": 1,
-  "editor": {
-    "vimMode": true
-  },
   "permissions": {
     "allow": [
       "Shell(.specify/scripts/bash/check-prerequisites.sh)",
