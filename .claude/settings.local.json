@@ -13,7 +13,11 @@
       "Bash(.specify/scripts/bash/setup-plan.sh:*)",
       "Bash(.specify/scripts/bash/update-agent-context.sh:*)",
       "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
-      "Bash(git rev-parse:*)"
+      "Bash(git rev-parse:*)",
+      "Bash(mkdir:*)",
+      "Bash(mvn clean test:*)",
+      "Bash(cat:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []
