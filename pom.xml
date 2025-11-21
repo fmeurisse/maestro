@@ -1,72 +1,283 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>io.maestro</groupId>
-  <artifactId>maestro</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <packaging>pom</packaging>
-  <name>Maestro</name>
-  <description>Maestro project</description>
-  <properties>
-    <java.version>21</java.version>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>${java.version}</maven.compiler.source>
-    <maven.compiler.target>${java.version}</maven.compiler.target>
-    <kotlin.version>2.2.0</kotlin.version>
-    <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-    <quarkus.version>3.29.3</quarkus.version>
-    <quarkus-plugin.version>3.29.3</quarkus-plugin.version>
-    <surefire-plugin.version>3.2.5</surefire-plugin.version>
-  </properties>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>io.quarkus.platform</groupId>
-        <artifactId>quarkus-bom</artifactId>
-        <version>${quarkus.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-stdlib</artifactId>
-        <version>${kotlin.version}</version>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-  <modules>
-    <module>model</module>
-    <module>core</module>
-    <module>api</module>
-    <module>plugins/postgres</module>
-<!--    <module>ui</module>-->
-  </modules>
-  <build>
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.jetbrains.kotlin</groupId>
-          <artifactId>kotlin-maven-plugin</artifactId>
-          <version>${kotlin.version}</version>
-          <executions>
-            <execution>
-              <id>compile</id>
-              <phase>compile</phase>
-              <goals>
-                <goal>compile</goal>
-              </goals>
-            </execution>
-            <execution>
-              <id>test-compile</id>
-              <phase>test-compile</phase>
-              <goals>
-                <goal>test-compile</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
-      </plugins>
-    </pluginManagement>
-  </build>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ==================================================================================== -->
+    <!-- ==                     Description                                                   -->
+    <!-- ==================================================================================== -->
+    <groupId>io.maestro</groupId>
+    <artifactId>maestro</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Maestro</name>
+    <description>
+        A workflow orchestration framework for Java/Kotlin applications with modular design and plugin system
+        for extensibility
+    </description>
+
+    <!-- ==================================================================================== -->
+    <!-- ==                     Properties                                                    -->
+    <!-- ==================================================================================== -->
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <kotlin.version>2.2.0</kotlin.version>
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.version>3.29.3</quarkus.version>
+        <quarkus-plugin.version>3.29.3</quarkus-plugin.version>
+        <surefire-plugin.version>3.2.5</surefire-plugin.version>
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+
+        <!-- Testing dependencies -->
+        <junit-jupiter.version>5.10.2</junit-jupiter.version>
+        <kotest.version>5.9.1</kotest.version>
+        <kotest-extensions-testcontainers.version>2.0.2</kotest-extensions-testcontainers.version>
+        <testcontainers.version>1.19.3</testcontainers.version>
+
+        <!-- Database dependencies -->
+        <postgresql.version>42.7.1</postgresql.version>
+        <jdbi.version>3.45.1</jdbi.version>
+
+        <!-- Jakarta dependencies -->
+        <jakarta.enterprise.cdi-api.version>4.0.1</jakarta.enterprise.cdi-api.version>
+        <jakarta.inject-api.version>2.0.1</jakarta.inject-api.version>
+
+        <!-- Other dependencies -->
+        <jboss-logging.version>3.5.3.Final</jboss-logging.version>
+        <zalando-problem.version>0.27.1</zalando-problem.version>
+
+        <!-- Test execution control -->
+        <skipIntegTests>false</skipIntegTests>
+    </properties>
+
+    <!-- ==================================================================================== -->
+    <!-- ==                     Modules                                                       -->
+    <!-- ==================================================================================== -->
+    <modules>
+        <module>model</module>
+        <module>core</module>
+        <module>api</module>
+        <module>plugins/postgres</module>
+        <!--    <module>ui</module>-->
+    </modules>
+
+    <!-- ==================================================================================== -->
+    <!-- ==                     Build                                                         -->
+    <!-- ==================================================================================== -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-maven-plugin</artifactId>
+                    <version>${kotlin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>compile</id>
+                            <phase>compile</phase>
+                            <goals>
+                                <goal>compile</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>test-compile</id>
+                            <phase>test-compile</phase>
+                            <goals>
+                                <goal>test-compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire-plugin.version}</version>
+                    <configuration>
+                        <!-- Disable default execution -->
+                        <skip>true</skip>
+                    </configuration>
+                    <executions>
+                        <!-- Unit Tests Execution -->
+                        <execution>
+                            <id>unit-tests</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>test</goal>
+                            </goals>
+                            <configuration>
+                                <skip>false</skip>
+                                <includes>
+                                    <include>**/*UnitTest.java</include>
+                                    <include>**/*UnitTest.kt</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>**/*IntegTest.java</exclude>
+                                    <exclude>**/*IntegTest.kt</exclude>
+                                </excludes>
+                                <skipTests>${skipTests}</skipTests>
+                            </configuration>
+                        </execution>
+                        <!-- Integration Tests Execution -->
+                        <execution>
+                            <id>integration-tests</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>test</goal>
+                            </goals>
+                            <configuration>
+                                <skip>false</skip>
+                                <includes>
+                                    <include>**/*IntegTest.java</include>
+                                    <include>**/*IntegTest.kt</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>**/*UnitTest.java</exclude>
+                                    <exclude>**/*UnitTest.kt</exclude>
+                                </excludes>
+                                <skipTests>${skipTests}</skipTests>
+                                <skip>${skipIntegTests}</skip>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${surefire-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <!-- ==================================================================================== -->
+    <!-- ==                     Dependencies                                                  -->
+    <!-- ==================================================================================== -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.quarkus.platform</groupId>
+                <artifactId>quarkus-bom</artifactId>
+                <version>${quarkus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-test</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-test-junit5</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+
+            <!-- Testing dependencies -->
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit-jupiter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-runner-junit5-jvm</artifactId>
+                <version>${kotest.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-assertions-core-jvm</artifactId>
+                <version>${kotest.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.kotest</groupId>
+                <artifactId>kotest-framework-api-jvm</artifactId>
+                <version>${kotest.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.kotest.extensions</groupId>
+                <artifactId>kotest-extensions-testcontainers</artifactId>
+                <version>${kotest-extensions-testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+
+            <!-- Database dependencies -->
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jdbi</groupId>
+                <artifactId>jdbi3-core</artifactId>
+                <version>${jdbi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jdbi</groupId>
+                <artifactId>jdbi3-kotlin</artifactId>
+                <version>${jdbi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jdbi</groupId>
+                <artifactId>jdbi3-postgres</artifactId>
+                <version>${jdbi.version}</version>
+            </dependency>
+
+            <!-- Jakarta dependencies -->
+            <dependency>
+                <groupId>jakarta.enterprise</groupId>
+                <artifactId>jakarta.enterprise.cdi-api</artifactId>
+                <version>${jakarta.enterprise.cdi-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.inject</groupId>
+                <artifactId>jakarta.inject-api</artifactId>
+                <version>${jakarta.inject-api.version}</version>
+            </dependency>
+
+            <!-- Other dependencies -->
+            <dependency>
+                <groupId>org.jboss.logging</groupId>
+                <artifactId>jboss-logging</artifactId>
+                <version>${jboss-logging.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.zalando</groupId>
+                <artifactId>problem</artifactId>
+                <version>${zalando-problem.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.zalando</groupId>
+                <artifactId>jackson-datatype-problem</artifactId>
+                <version>${zalando-problem.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
 </project>
