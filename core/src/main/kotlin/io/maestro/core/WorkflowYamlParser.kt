@@ -6,13 +6,12 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.exception.WorkflowRevisionParsingException
 import io.maestro.core.steps.registerStepTypes
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
-import io.maestro.model.steps.Step
 import jakarta.enterprise.context.ApplicationScoped
-import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
  * Parser for YAML workflow definitions.
@@ -28,8 +27,9 @@ class WorkflowYamlParser {
 
     private val yamlMapper = ObjectMapper(YAMLFactory().apply {
         disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+        disable(YAMLGenerator.Feature.USE_NATIVE_TYPE_ID)
         enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-        enable(YAMLGenerator.Feature.INDENT_ARRAYS)
+        disable(YAMLGenerator.Feature.INDENT_ARRAYS)
     }).apply {
         registerModule(kotlinModule())
         registerModule(JavaTimeModule())
@@ -43,11 +43,12 @@ class WorkflowYamlParser {
      * @return Parsed workflow data
      * @throws WorkflowRevisionParsingException if YAML is malformed or invalid
      */
-    fun parseRevision(yaml: String): WorkflowRevision {
+    fun parseRevision(yaml: String, validate: Boolean = true): WorkflowRevision {
         logger.debug { "Parsing YAML workflow revision" }
         try {
             // REQ-WF-056: Parse YAML into domain model
-            val revision = yamlMapper.readValue<WorkflowRevision>(yaml).validate()
+            val revision = yamlMapper.readValue<WorkflowRevision>(yaml)
+            if (validate) revision.validate()
             logger.debug { "Successfully parsed workflow revision: ${revision.namespace}/${revision.id}/${revision.version}" }
             return revision
         } catch (e: Exception) {

@@ -38,6 +38,8 @@ data class WorkflowRevision(
         validate(namespace, id, version, name, description)
     }
 
+    fun withVersion(version: Int): WorkflowRevision = copy(version = version)
+
     fun toWorkflowRevisionID(): WorkflowRevisionID = WorkflowRevisionID(namespace, id, version)
 
     companion object {
