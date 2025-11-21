@@ -10,7 +10,7 @@ import java.time.Instant
 data class WorkflowRevisionResponse(
     val namespace: String,
     val id: String,
-    val version: Long,
+    val version: Int,
     val name: String,
     val description: String,
     val active: Boolean,

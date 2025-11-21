@@ -1,10 +1,13 @@
 package io.maestro.core.usecase
 
-import io.maestro.core.exception.WorkflowAlreadyExistsException
+import io.maestro.core.workflow.WorkflowAlreadyExistsException
 import io.maestro.core.parser.WorkflowYamlParser
-import io.maestro.core.repository.IWorkflowRevisionRepository
+import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
 import io.maestro.core.validation.WorkflowValidator
+import io.maestro.model.WorkflowID
+import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevision
+import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import java.time.Instant
@@ -45,9 +48,10 @@ class CreateWorkflowUseCase @Inject constructor(
         val parsedData = yamlParser.parseWorkflowDefinition(yaml)
 
         // REQ-WF-004: Validate uniqueness
-        if (repository.existsByWorkflowId(parsedData.namespace, parsedData.id)) {
+        val workflowId = WorkflowID(parsedData.namespace, parsedData.id)
+        if (repository.exists(workflowId)) {
             throw WorkflowAlreadyExistsException(
-                "Workflow with namespace '${parsedData.namespace}' and id '${parsedData.id}' already exists"
+                WorkflowRevisionID(parsedData.namespace, parsedData.id, 1)
             )
         }
 
@@ -66,16 +70,18 @@ class CreateWorkflowUseCase @Inject constructor(
         val revision = WorkflowRevision(
             namespace = parsedData.namespace,
             id = parsedData.id,
-            version = 1L, // REQ-WF-002: First revision is version 1
+            version = 1, // REQ-WF-002: First revision is version 1
             name = parsedData.name,
             description = parsedData.description,
             active = parsedData.active, // REQ-WF-003: Default false
-            rootStep = parsedData.rootStep,
+            steps = parsedData.rootStep, // Map rootStep to steps property
             createdAt = now, // REQ-WF-005: Set creation timestamp
             updatedAt = now  // REQ-WF-005: Set update timestamp
         )
 
         // REQ-WF-007: Persist with YAML source and return (repository stores YAML separately)
-        return repository.save(revision, yaml)
+        val revisionWithSource = WorkflowRevisionWithSource.fromRevision(revision, yaml)
+        val saved = repository.saveWithSource(revisionWithSource)
+        return saved.revision
     }
 }

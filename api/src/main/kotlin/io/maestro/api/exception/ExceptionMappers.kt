@@ -3,8 +3,7 @@ package io.maestro.api.exception
 import io.maestro.core.exception.WorkflowAlreadyExistsException
 import io.maestro.core.exception.WorkflowNotFoundException
 import io.maestro.core.exception.WorkflowValidationException
-import io.maestro.model.exception.InvalidWorkflowRevisionException
-import io.maestro.model.exception.ModelValidationException
+import io.maestro.model.exception.MaestroException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
 import jakarta.ws.rs.ext.Provider
@@ -36,43 +35,31 @@ data class ProblemDetail(
 )
 
 /**
- * Maps ModelValidationException to 400 Bad Request with RFC 7807 Problem Details
+ * Maps MaestroException (and all its subclasses) to RFC 7807 Problem Details responses.
+ * 
+ * This mapper handles all model-layer exceptions that extend MaestroException:
+ * - MalformedWorkflowIDException (400)
+ * - MalformedWorkflowRevisionIDException (400)
+ * - InvalidWorkflowRevision (400)
+ * 
+ * The exception's type, title, status, and message are used directly from the exception,
+ * ensuring consistency with the RFC 7807 Problem Details format.
  */
 @Provider
-class ModelValidationExceptionMapper : ExceptionMapper<ModelValidationException> {
-    override fun toResponse(exception: ModelValidationException): Response {
+class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
+    override fun toResponse(exception: MaestroException): Response {
+        val statusCode = exception.status ?: Response.Status.BAD_REQUEST.statusCode
+        val instanceUri = exception.instance?.let { str -> URI.create(str) }
+        
         val problemDetail = ProblemDetail(
             type = URI.create(exception.type),
-            title = "Validation Failed",
-            status = 400,
+            title = exception.title,
+            status = statusCode,
             detail = exception.message,
-            field = exception.field,
-            rejectedValue = exception.rejectedValue
+            instance = instanceUri
         )
 
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity(problemDetail)
-            .type("application/problem+json")
-            .build()
-    }
-}
-
-/**
- * Maps InvalidWorkflowRevisionException (from model layer) to 400 Bad Request
- */
-@Provider
-class InvalidWorkflowRevisionExceptionMapper : ExceptionMapper<InvalidWorkflowRevisionException> {
-    override fun toResponse(exception: InvalidWorkflowRevisionException): Response {
-        val problemDetail = ProblemDetail(
-            type = URI.create(exception.type),
-            title = "Invalid Workflow Revision",
-            status = 400,
-            detail = exception.message,
-            field = exception.field,
-            rejectedValue = exception.rejectedValue
-        )
-
-        return Response.status(Response.Status.BAD_REQUEST)
+        return Response.status(statusCode)
             .entity(problemDetail)
             .type("application/problem+json")
             .build()

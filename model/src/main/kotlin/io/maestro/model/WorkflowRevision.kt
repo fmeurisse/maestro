@@ -1,112 +1,148 @@
 package io.maestro.model
 
-import io.maestro.model.exception.InvalidWorkflowRevisionException
+import io.maestro.model.exception.InvalidWorkflowRevision
 import io.maestro.model.steps.Step
 import java.time.Instant
 
 /**
- * Represents a specific version of a workflow definition without the YAML source.
- * This is the core domain model used for workflow execution and most operations.
+ * Core workflow revision entity WITHOUT YAML source.
+ * Use this for most operations: queries, activation, execution planning.
  *
- * @property namespace Logical namespace for workflow isolation (e.g., "production", "development")
- * @property id Unique identifier for the workflow within its namespace
- * @property version Sequential version number (starts at 1)
- * @property name Human-readable name for the workflow
- * @property description Detailed description of what this workflow does
- * @property active Whether this revision is currently active and available for execution
- * @property rootStep Root step definition for the workflow (typically a Sequence or other orchestration step)
- * @property createdAt Timestamp when this revision was created (UTC, immutable)
- * @property updatedAt Timestamp when this revision was last modified (UTC)
- * @throws InvalidWorkflowRevisionException if validation fails
+ * This entity excludes the yamlSource field to reduce memory overhead for operations
+ * that don't need the original YAML (e.g., listing workflows, checking active state,
+ * execution planning). For operations requiring YAML source, use WorkflowRevisionWithSource.
+ *
+ * @property namespace Logical isolation boundary (e.g., "production", "staging")
+ * @property id Workflow identifier within namespace
+ * @property version Sequential version number (1, 2, 3...)
+ * @property name Human-readable workflow name
+ * @property description Workflow purpose and behavior description (max 1000 chars)
+ * @property steps Parsed workflow step tree
+ * @property active Whether this revision is active for execution
+ * @property createdAt UTC timestamp when revision was created (immutable)
+ * @property updatedAt UTC timestamp of the last modification (activation, deactivation, update)
  */
 data class WorkflowRevision(
     override val namespace: String,
     override val id: String,
-    override val version: Long,
+    override val version: Int,
     val name: String,
     val description: String,
+    val steps: Step,
     val active: Boolean = false,
-    val rootStep: Step,
     val createdAt: Instant,
     val updatedAt: Instant
-) : IWorkflowRevisionID {
+): IWorkflowRevisionID {
+    companion object {
+        private val NAMESPACE_REGEX = Regex("^[a-zA-Z0-9_-]+$")
+        private val ID_REGEX = Regex("^[a-zA-Z0-9_-]+$")
+        private const val MAX_NAMESPACE_LENGTH = 100
+        private const val MAX_ID_LENGTH = 100
+        private const val MAX_NAME_LENGTH = 255
+        private const val MAX_DESCRIPTION_LENGTH = 1000
 
-    init {
-        val errors = mutableListOf<String>()
-
-        if (namespace.isBlank()) errors.add("Namespace must not be blank")
-        if (id.isBlank()) errors.add("ID must not be blank")
-        if (version <= 0) errors.add("Version must be positive")
-        if (name.isBlank()) errors.add("Name must not be blank")
-        if (description.isBlank()) errors.add("Description must not be blank")
-
-        if (errors.isNotEmpty()) {
-            throw InvalidWorkflowRevisionException(
-                message = "Invalid workflow revision: ${errors.joinToString(", ")}",
-                field = when {
-                    namespace.isBlank() -> "namespace"
-                    id.isBlank() -> "id"
-                    version <= 0 -> "version"
-                    name.isBlank() -> "name"
-                    else -> "description"
-                },
-                rejectedValue = when {
-                    namespace.isBlank() -> namespace
-                    id.isBlank() -> id
-                    version <= 0 -> version
-                    name.isBlank() -> name
-                    else -> description
-                }
+        /**
+         * Factory method with domain validation that throws domain exceptions.
+         * Use this instead of constructor to get proper domain exception handling.
+         *
+         * @throws InvalidWorkflowRevision if any validation rule is violated
+         */
+        @Throws(InvalidWorkflowRevision::class)
+        fun create(
+            namespace: String,
+            id: String,
+            version: Int,
+            name: String,
+            description: String,
+            steps: Step,
+            active: Boolean = false,
+            createdAt: Instant = Instant.now(),
+            updatedAt: Instant = createdAt
+        ): WorkflowRevision {
+            validate(namespace, id, version, name, description)
+            return WorkflowRevision(
+                namespace, id, version, name, description,
+                steps, active, createdAt, updatedAt
             )
+        }
+
+        private fun validate(
+            namespace: String,
+            id: String,
+            version: Int,
+            name: String,
+            description: String
+        ) {
+            if (namespace.isBlank()) {
+                throw InvalidWorkflowRevision("Namespace must not be blank")
+            }
+            if (namespace.length > MAX_NAMESPACE_LENGTH) {
+                throw InvalidWorkflowRevision("Namespace must not exceed $MAX_NAMESPACE_LENGTH characters")
+            }
+            if (!namespace.matches(NAMESPACE_REGEX)) {
+                throw InvalidWorkflowRevision(
+                    "Namespace must contain only alphanumeric characters, hyphens, and underscores"
+                )
+            }
+
+            if (id.isBlank()) {
+                throw InvalidWorkflowRevision("ID must not be blank")
+            }
+            if (id.length > MAX_ID_LENGTH) {
+                throw InvalidWorkflowRevision("ID must not exceed $MAX_ID_LENGTH characters")
+            }
+            if (!id.matches(ID_REGEX)) {
+                throw InvalidWorkflowRevision(
+                    "ID must contain only alphanumeric characters, hyphens, and underscores"
+                )
+            }
+
+            if (version <= 0) {
+                throw InvalidWorkflowRevision("Version must be positive")
+            }
+
+            if (name.isBlank()) {
+                throw InvalidWorkflowRevision("Name must not be blank")
+            }
+            if (name.length > MAX_NAME_LENGTH) {
+                throw InvalidWorkflowRevision("Name must not exceed $MAX_NAME_LENGTH characters")
+            }
+
+            if (description.length > MAX_DESCRIPTION_LENGTH) {
+                throw InvalidWorkflowRevision(
+                    "Description must not exceed $MAX_DESCRIPTION_LENGTH characters"
+                )
+            }
         }
     }
 
     /**
-     * Creates a copy of this revision with updated timestamp
+     * Create a copy with updated timestamp (for activation/deactivation/update operations)
      */
-    fun withUpdatedTimestamp(timestamp: Instant = Instant.now()): WorkflowRevision {
-        return copy(updatedAt = timestamp)
-    }
+    fun withUpdatedTimestamp(now: Instant = Instant.now()): WorkflowRevision =
+        copy(updatedAt = now)
 
     /**
-     * Creates a copy of this revision with active state changed
+     * Activate this revision
      */
-    fun withActiveState(newActiveState: Boolean, timestamp: Instant = Instant.now()): WorkflowRevision {
-        return copy(active = newActiveState, updatedAt = timestamp)
-    }
-}
+    fun activate(now: Instant = Instant.now()): WorkflowRevision =
+        copy(active = true, updatedAt = now)
 
-/**
- * Represents a workflow revision WITH its original YAML source.
- * Use this class only when the YAML source is needed (e.g., for API responses, exports, auditing).
- * For execution and most operations, use WorkflowRevision instead.
- *
- * @property revision The core workflow revision data
- * @property yaml Original YAML definition (preserves formatting and comments)
- * @throws InvalidWorkflowRevisionException if validation fails
- */
-data class WorkflowRevisionWithSource(
-    val revision: WorkflowRevision,
-    val yaml: String
-) {
-    init {
-        if (yaml.isBlank()) {
-            throw InvalidWorkflowRevisionException(
-                message = "YAML definition must not be blank",
-                field = "yaml",
-                rejectedValue = yaml
-            )
-        }
-    }
+    /**
+     * Deactivate this revision
+     */
+    fun deactivate(now: Instant = Instant.now()): WorkflowRevision =
+        copy(active = false, updatedAt = now)
 
-    // Delegate common properties for convenience
-    val namespace: String get() = revision.namespace
-    val id: String get() = revision.id
-    val version: Long get() = revision.version
-    val name: String get() = revision.name
-    val description: String get() = revision.description
-    val active: Boolean get() = revision.active
-    val rootStep: Step get() = revision.rootStep
-    val createdAt: Instant get() = revision.createdAt
-    val updatedAt: Instant get() = revision.updatedAt
+    /**
+     * Get the composite identifier for this revision
+     */
+    fun revisionId(): WorkflowRevisionID =
+        WorkflowRevisionID(namespace, id, version)
+
+    /**
+     * Get the workflow identifier (without version)
+     */
+    fun workflowId(): WorkflowID =
+        WorkflowID(namespace, id)
 }

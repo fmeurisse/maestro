@@ -2,8 +2,9 @@ package io.maestro.api.resource
 
 import io.maestro.api.dto.WorkflowRevisionResponse
 import io.maestro.core.parser.WorkflowYamlParser
-import io.maestro.core.repository.IWorkflowRevisionRepository
+import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
 import io.maestro.core.usecase.CreateWorkflowUseCase
+import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
@@ -51,7 +52,8 @@ class WorkflowResource @Inject constructor(
             log.info("Successfully created workflow: ${created.namespace}/${created.id} v${created.version}")
 
             // Fetch the workflow WITH its YAML source for the response
-            val withSource = repository.findByIdWithSource(created)
+            val revisionId = WorkflowRevisionID(created.namespace, created.id, created.version)
+            val withSource = repository.findByIdWithSource(revisionId)
                 ?: throw IllegalStateException("Failed to retrieve created workflow")
 
             // Convert to response DTO
@@ -80,7 +82,7 @@ class WorkflowResource @Inject constructor(
         name = name,
         description = description,
         active = active,
-        rootStep = rootStep,
+        rootStep = steps, // Map steps to rootStep for response DTO
         createdAt = createdAt,
         updatedAt = updatedAt
     )

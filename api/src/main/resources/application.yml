@@ -16,3 +16,17 @@ quarkus:
     level: INFO
     category:
       "io.maestro": DEBUG
+
+  # Database Configuration
+  datasource:
+    db-kind: postgresql
+    username: ${DB_USERNAME:maestro}
+    password: ${DB_PASSWORD:maestro}
+    jdbc:
+      url: ${DB_URL:jdbc:postgresql://localhost:5432/maestro}
+      max-size: 16
+      min-size: 2
+
+  # JDBI Configuration (for postgres-repository plugin)
+  jdbi:
+    install-plugins: true

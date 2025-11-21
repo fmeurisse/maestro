@@ -1,0 +1,401 @@
+package io.maestro.plugins.postgres
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import io.maestro.core.workflow.ActiveRevisionConflictException
+import io.maestro.core.workflow.WorkflowAlreadyExistsException
+import io.maestro.core.workflow.WorkflowNotFoundException
+import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
+import io.maestro.model.WorkflowID
+import io.maestro.model.WorkflowRevision
+import io.maestro.model.WorkflowRevisionID
+import io.maestro.model.WorkflowRevisionWithSource
+import jakarta.enterprise.context.ApplicationScoped
+import jakarta.inject.Inject
+import jakarta.inject.Named
+import org.jdbi.v3.core.Jdbi
+import org.jboss.logging.Logger
+
+/**
+ * PostgreSQL implementation of IWorkflowRevisionRepository.
+ * 
+ * Uses dual storage pattern:
+ * - yaml_source TEXT: Preserves original YAML with formatting/comments
+ * - revision_data JSONB: Stores complete WorkflowRevision (without yamlSource field)
+ * 
+ * Computed columns (namespace, id, version, etc.) are automatically generated
+ * from revision_data JSONB, enabling efficient querying and indexing.
+ */
+@ApplicationScoped
+class PostgresWorkflowRevisionRepository @Inject constructor(
+    private val jdbi: Jdbi,
+    @Named("jsonbObjectMapper") private val objectMapper: ObjectMapper
+) : IWorkflowRevisionRepository {
+
+    private val log = Logger.getLogger(PostgresWorkflowRevisionRepository::class.java)
+
+    // ===== Methods with YAML source (WorkflowRevisionWithSource) =====
+
+    override fun saveWithSource(revision: WorkflowRevisionWithSource): WorkflowRevisionWithSource {
+        log.debug("Saving workflow revision with source: ${revision.revisionId()}")
+
+        return jdbi.withHandle<WorkflowRevisionWithSource, Exception> { handle ->
+            // Check if revision already exists
+            val exists = handle.createQuery("""
+                SELECT COUNT(*) FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", revision.namespace)
+                .bind("id", revision.id)
+                .bind("version", revision.version)
+                .mapTo(Int::class.java)
+                .one()
+
+            if (exists > 0) {
+                throw WorkflowAlreadyExistsException(revision.revisionId())
+            }
+
+            // Serialize WorkflowRevision (without yamlSource) to JSONB
+            val revisionJson = objectMapper.writeValueAsString(revision.revision)
+
+            // Insert with dual storage
+            handle.createUpdate("""
+                INSERT INTO workflow_revisions (yaml_source, revision_data)
+                VALUES (:yamlSource, :revisionData::jsonb)
+            """.trimIndent())
+                .bind("yamlSource", revision.yamlSource)
+                .bind("revisionData", revisionJson)
+                .execute()
+
+            log.debug("Successfully saved workflow revision: ${revision.revisionId()}")
+            revision
+        }
+    }
+
+    override fun updateWithSource(revision: WorkflowRevisionWithSource): WorkflowRevisionWithSource {
+        log.debug("Updating workflow revision with source: ${revision.revisionId()}")
+
+        return jdbi.withHandle<WorkflowRevisionWithSource, Exception> { handle ->
+            // Check if revision exists and is inactive
+            val current = handle.createQuery("""
+                SELECT active FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", revision.namespace)
+                .bind("id", revision.id)
+                .bind("version", revision.version)
+                .mapTo(Boolean::class.java)
+                .findFirst()
+                .orElse(null)
+
+            if (current == null) {
+                throw WorkflowNotFoundException(revision.revisionId())
+            }
+            if (current) {
+                throw ActiveRevisionConflictException(revision.revisionId(), "update")
+            }
+
+            // Serialize updated WorkflowRevision to JSONB
+            val revisionJson = objectMapper.writeValueAsString(revision.revision)
+
+            // Update with dual storage
+            val rowsUpdated = handle.createUpdate("""
+                UPDATE workflow_revisions
+                SET yaml_source = :yamlSource,
+                    revision_data = :revisionData::jsonb
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("yamlSource", revision.yamlSource)
+                .bind("revisionData", revisionJson)
+                .bind("namespace", revision.namespace)
+                .bind("id", revision.id)
+                .bind("version", revision.version)
+                .execute()
+
+            if (rowsUpdated == 0) {
+                throw WorkflowNotFoundException(revision.revisionId())
+            }
+
+            log.debug("Successfully updated workflow revision: ${revision.revisionId()}")
+            revision
+        }
+    }
+
+    override fun findByIdWithSource(id: WorkflowRevisionID): WorkflowRevisionWithSource? {
+        log.debug("Finding workflow revision with source: $id")
+
+        return jdbi.withHandle<WorkflowRevisionWithSource?, Exception> { handle ->
+            handle.createQuery("""
+                SELECT yaml_source, revision_data
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .map { rs, _ ->
+                    val yamlSource = rs.getString("yaml_source")
+                    val revisionJson = rs.getString("revision_data")
+                    val revision = objectMapper.readValue<WorkflowRevision>(revisionJson)
+                    WorkflowRevisionWithSource.fromRevision(revision, yamlSource)
+                }
+                .findFirst()
+                .orElse(null)
+        }
+    }
+
+    // ===== Methods without YAML source (WorkflowRevision) =====
+
+    override fun findById(id: WorkflowRevisionID): WorkflowRevision? {
+        log.debug("Finding workflow revision: $id")
+
+        return jdbi.withHandle<WorkflowRevision?, Exception> { handle ->
+            handle.createQuery("""
+                SELECT revision_data
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .map { rs, _ ->
+                    val revisionJson = rs.getString("revision_data")
+                    objectMapper.readValue<WorkflowRevision>(revisionJson)
+                }
+                .findFirst()
+                .orElse(null)
+        }
+    }
+
+    override fun findByWorkflowId(workflowId: WorkflowID): List<WorkflowRevision> {
+        log.debug("Finding all revisions for workflow: $workflowId")
+
+        return jdbi.withHandle<List<WorkflowRevision>, Exception> { handle ->
+            handle.createQuery("""
+                SELECT revision_data
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id
+                ORDER BY version ASC
+            """.trimIndent())
+                .bind("namespace", workflowId.namespace)
+                .bind("id", workflowId.id)
+                .map { rs, _ ->
+                    val revisionJson = rs.getString("revision_data")
+                    objectMapper.readValue<WorkflowRevision>(revisionJson)
+                }
+                .list()
+        }
+    }
+
+    override fun findActiveRevisions(workflowId: WorkflowID): List<WorkflowRevision> {
+        log.debug("Finding active revisions for workflow: $workflowId")
+
+        return jdbi.withHandle<List<WorkflowRevision>, Exception> { handle ->
+            handle.createQuery("""
+                SELECT revision_data
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND active = TRUE
+                ORDER BY version ASC
+            """.trimIndent())
+                .bind("namespace", workflowId.namespace)
+                .bind("id", workflowId.id)
+                .map { rs, _ ->
+                    val revisionJson = rs.getString("revision_data")
+                    objectMapper.readValue<WorkflowRevision>(revisionJson)
+                }
+                .list()
+        }
+    }
+
+    // ===== Utility methods =====
+
+    override fun findMaxVersion(workflowId: WorkflowID): Int? {
+        log.debug("Finding max version for workflow: $workflowId")
+
+        return jdbi.withHandle<Int?, Exception> { handle ->
+            handle.createQuery("""
+                SELECT MAX(version) as max_version
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id
+            """.trimIndent())
+                .bind("namespace", workflowId.namespace)
+                .bind("id", workflowId.id)
+                .mapTo(Int::class.java)
+                .findFirst()
+                .orElse(null)
+        }
+    }
+
+    override fun exists(workflowId: WorkflowID): Boolean {
+        log.debug("Checking if workflow exists: $workflowId")
+
+        return jdbi.withHandle<Boolean, Exception> { handle ->
+            val count = handle.createQuery("""
+                SELECT COUNT(*) FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id
+            """.trimIndent())
+                .bind("namespace", workflowId.namespace)
+                .bind("id", workflowId.id)
+                .mapTo(Int::class.java)
+                .one()
+
+            count > 0
+        }
+    }
+
+    override fun deleteById(id: WorkflowRevisionID) {
+        log.debug("Deleting workflow revision: $id")
+
+        jdbi.useHandle<Exception> { handle ->
+            // Check if revision exists and is inactive
+            val current = handle.createQuery("""
+                SELECT active FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .mapTo(Boolean::class.java)
+                .findFirst()
+                .orElse(null)
+
+            if (current == null) {
+                throw WorkflowNotFoundException(id)
+            }
+            if (current) {
+                throw ActiveRevisionConflictException(id, "delete")
+            }
+
+            val rowsDeleted = handle.createUpdate("""
+                DELETE FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .execute()
+
+            if (rowsDeleted == 0) {
+                throw WorkflowNotFoundException(id)
+            }
+
+            log.debug("Successfully deleted workflow revision: $id")
+        }
+    }
+
+    override fun deleteByWorkflowId(workflowId: WorkflowID): Int {
+        log.debug("Deleting all revisions for workflow: $workflowId")
+
+        return jdbi.withHandle<Int, Exception> { handle ->
+            val rowsDeleted = handle.createUpdate("""
+                DELETE FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id
+            """.trimIndent())
+                .bind("namespace", workflowId.namespace)
+                .bind("id", workflowId.id)
+                .execute()
+
+            log.debug("Deleted $rowsDeleted revisions for workflow: $workflowId")
+            rowsDeleted
+        }
+    }
+
+    override fun listWorkflows(namespace: String): List<WorkflowID> {
+        log.debug("Listing workflows in namespace: $namespace")
+
+        return jdbi.withHandle<List<WorkflowID>, Exception> { handle ->
+            handle.createQuery("""
+                SELECT DISTINCT namespace, id
+                FROM workflow_revisions
+                WHERE namespace = :namespace
+                ORDER BY id ASC
+            """.trimIndent())
+                .bind("namespace", namespace)
+                .map { rs, _ ->
+                    WorkflowID(
+                        namespace = rs.getString("namespace"),
+                        id = rs.getString("id")
+                    )
+                }
+                .list()
+        }
+    }
+
+    override fun activate(id: WorkflowRevisionID): WorkflowRevision {
+        log.debug("Activating workflow revision: $id")
+
+        return jdbi.withHandle<WorkflowRevision, Exception> { handle ->
+            // Get current revision within the same handle
+            val currentJson = handle.createQuery("""
+                SELECT revision_data
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .map { rs, _ -> rs.getString("revision_data") }
+                .findFirst()
+                .orElse(null) ?: throw WorkflowNotFoundException(id)
+
+            val current = objectMapper.readValue<WorkflowRevision>(currentJson)
+
+            // Update active flag
+            val updatedRevision = current.activate()
+            val revisionJson = objectMapper.writeValueAsString(updatedRevision)
+
+            handle.createUpdate("""
+                UPDATE workflow_revisions
+                SET revision_data = :revisionData::jsonb
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("revisionData", revisionJson)
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .execute()
+
+            log.debug("Successfully activated workflow revision: $id")
+            updatedRevision
+        }
+    }
+
+    override fun deactivate(id: WorkflowRevisionID): WorkflowRevision {
+        log.debug("Deactivating workflow revision: $id")
+
+        return jdbi.withHandle<WorkflowRevision, Exception> { handle ->
+            // Get current revision within the same handle
+            val currentJson = handle.createQuery("""
+                SELECT revision_data
+                FROM workflow_revisions
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .map { rs, _ -> rs.getString("revision_data") }
+                .findFirst()
+                .orElse(null) ?: throw WorkflowNotFoundException(id)
+
+            val current = objectMapper.readValue<WorkflowRevision>(currentJson)
+
+            // Update active flag
+            val updatedRevision = current.deactivate()
+            val revisionJson = objectMapper.writeValueAsString(updatedRevision)
+
+            handle.createUpdate("""
+                UPDATE workflow_revisions
+                SET revision_data = :revisionData::jsonb
+                WHERE namespace = :namespace AND id = :id AND version = :version
+            """.trimIndent())
+                .bind("revisionData", revisionJson)
+                .bind("namespace", id.namespace)
+                .bind("id", id.id)
+                .bind("version", id.version)
+                .execute()
+
+            log.debug("Successfully deactivated workflow revision: $id")
+            updatedRevision
+        }
+    }
+}
