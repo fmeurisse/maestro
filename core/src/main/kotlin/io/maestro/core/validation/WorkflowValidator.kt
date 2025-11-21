@@ -29,7 +29,7 @@ class WorkflowValidator {
         id: String,
         name: String,
         description: String,
-        rootStep: Step,
+        steps: List<Step>,
         yaml: String
     ) {
         val errors = mutableListOf<String>()
@@ -47,7 +47,7 @@ class WorkflowValidator {
         validateDescription(description, errors)
 
         // REQ-WF-051, REQ-WF-054, REQ-WF-055: Validate root step
-        validateRootStep(rootStep, errors)
+        validateSteps(steps, errors)
 
         // Validate YAML
         validateYaml(yaml, errors)
@@ -114,27 +114,13 @@ class WorkflowValidator {
     /**
      * REQ-WF-051, REQ-WF-054, REQ-WF-055: Validate root step definition
      */
-    private fun validateRootStep(rootStep: Step, errors: MutableList<String>) {
-        try {
-            // Validate step tree structure starting from root
-            validateStepTree(rootStep, 0)
-        } catch (e: Exception) {
-            errors.add("Invalid root step definition: ${e.message}")
+    private fun validateSteps(steps: List<Step>, errors: MutableList<String>) {
+        if (steps.isEmpty()) {
+            errors.add("Workflow must contain at least one step")
         }
     }
 
-    /**
-     * Recursively validates step tree with depth checking
-     */
-    private fun validateStepTree(step: Step, depth: Int) {
-        // Prevent excessive nesting (max 10 levels)
-        if (depth > 10) {
-            throw IllegalStateException("Step nesting depth exceeds maximum of 10 levels")
-        }
 
-        // Step-specific validation would go here
-        // For now, rely on model validation
-    }
 
     /**
      * Validate YAML is not empty

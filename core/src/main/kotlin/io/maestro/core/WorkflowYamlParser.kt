@@ -1,4 +1,4 @@
-package io.maestro.core.parser
+package io.maestro.core
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
@@ -63,5 +63,5 @@ data class ParsedWorkflowData(
     val name: String,
     val description: String,
     val active: Boolean = false,
-    val rootStep: Step
+    val steps: List<Step>
 )

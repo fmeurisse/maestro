@@ -1,16 +1,15 @@
 package io.maestro.api.config
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.NamedType
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
-import io.maestro.model.steps.If
-import io.maestro.model.steps.LogTask
-import io.maestro.model.steps.Sequence
-import io.maestro.model.steps.Step
+import io.maestro.core.steps.StepTypeRegistry
+import io.maestro.core.steps.If
+import io.maestro.core.steps.LogTask
+import io.maestro.core.steps.Sequence
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Produces
 import jakarta.inject.Singleton
@@ -117,14 +116,15 @@ class JacksonConfig {
     private fun registerPluginStepTypes(mapper: ObjectMapper): Int {
         return try {
             val registry = StepTypeRegistry.discover()
-            registry.registeredTypes.forEach { (typeName, stepClass) ->
+            val registeredTypes = registry.getAllTypes()
+            registeredTypes.forEach { (typeName, stepClass) ->
                 mapper.registerSubtypes(NamedType(stepClass.java, typeName))
                 log.debug("Registered plugin step type: $typeName -> ${stepClass.qualifiedName}")
             }
-            if (registry.registeredTypes.isNotEmpty()) {
-                log.info("Discovered ${registry.registeredTypes.size} plugin step types")
+            if (registeredTypes.isNotEmpty()) {
+                log.info("Discovered ${registeredTypes.size} plugin step types")
             }
-            registry.registeredTypes.size
+            registeredTypes.size
         } catch (e: Exception) {
             log.warn("Failed to discover plugin step types", e)
             // Continue without plugin types - core types are still registered

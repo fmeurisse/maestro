@@ -29,7 +29,7 @@ import org.jboss.logging.Logger
 @ApplicationScoped
 class PostgresWorkflowRevisionRepository @Inject constructor(
     private val jdbi: Jdbi,
-    @Named("jsonbObjectMapper") private val objectMapper: ObjectMapper
+    @param:Named("jsonbObjectMapper") private val objectMapper: ObjectMapper
 ) : IWorkflowRevisionRepository {
 
     private val log = Logger.getLogger(PostgresWorkflowRevisionRepository::class.java)
@@ -220,7 +220,10 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
             """.trimIndent())
                 .bind("namespace", workflowId.namespace)
                 .bind("id", workflowId.id)
-                .mapTo(Int::class.java)
+                .map { rs, _ ->
+                    val version = rs.getObject("max_version", java.lang.Long::class.java)
+                    version?.toInt()
+                }
                 .findFirst()
                 .orElse(null)
         }

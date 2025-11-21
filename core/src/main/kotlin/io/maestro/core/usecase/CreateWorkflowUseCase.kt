@@ -1,7 +1,7 @@
 package io.maestro.core.usecase
 
 import io.maestro.core.workflow.WorkflowAlreadyExistsException
-import io.maestro.core.parser.WorkflowYamlParser
+import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
 import io.maestro.core.validation.WorkflowValidator
 import io.maestro.model.WorkflowID
@@ -61,7 +61,7 @@ class CreateWorkflowUseCase @Inject constructor(
             id = parsedData.id,
             name = parsedData.name,
             description = parsedData.description,
-            rootStep = parsedData.rootStep,
+            steps = parsedData.steps,
             yaml = yaml
         )
 
@@ -74,7 +74,7 @@ class CreateWorkflowUseCase @Inject constructor(
             name = parsedData.name,
             description = parsedData.description,
             active = parsedData.active, // REQ-WF-003: Default false
-            steps = parsedData.rootStep, // Map rootStep to steps property
+            steps = parsedData.steps, // Map rootStep to steps property
             createdAt = now, // REQ-WF-005: Set creation timestamp
             updatedAt = now  // REQ-WF-005: Set update timestamp
         )

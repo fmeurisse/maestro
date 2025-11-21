@@ -28,7 +28,7 @@ data class WorkflowRevision(
     override val version: Int,
     val name: String,
     val description: String,
-    val steps: Step,
+    val steps: List<Step>,
     val active: Boolean = false,
     val createdAt: Instant,
     val updatedAt: Instant
@@ -54,7 +54,7 @@ data class WorkflowRevision(
             version: Int,
             name: String,
             description: String,
-            steps: Step,
+            steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
             updatedAt: Instant = createdAt

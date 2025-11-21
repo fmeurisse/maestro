@@ -1,7 +1,7 @@
 package io.maestro.api.resource
 
 import io.maestro.api.dto.WorkflowRevisionResponse
-import io.maestro.core.parser.WorkflowYamlParser
+import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
 import io.maestro.core.usecase.CreateWorkflowUseCase
 import io.maestro.model.WorkflowRevisionID
@@ -82,7 +82,7 @@ class WorkflowResource @Inject constructor(
         name = name,
         description = description,
         active = active,
-        rootStep = steps, // Map steps to rootStep for response DTO
+        steps = steps,
         createdAt = createdAt,
         updatedAt = updatedAt
     )

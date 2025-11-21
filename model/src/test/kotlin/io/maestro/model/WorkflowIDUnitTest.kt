@@ -7,7 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.throwable.shouldHaveMessage
 import io.maestro.model.exception.MalformedWorkflowIDException
 
-class WorkflowIDTest : FeatureSpec({
+class WorkflowIDUnitTest : FeatureSpec({
 
     feature("toString method") {
         scenario("should format WorkflowID as namespace:id") {

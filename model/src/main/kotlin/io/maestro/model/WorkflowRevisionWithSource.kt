@@ -26,7 +26,7 @@ data class WorkflowRevisionWithSource(
     val version: Int get() = revision.version
     val name: String get() = revision.name
     val description: String get() = revision.description
-    val steps: Step get() = revision.steps
+    val steps: List<Step> get() = revision.steps
     val active: Boolean get() = revision.active
     val createdAt: Instant get() = revision.createdAt
     val updatedAt: Instant get() = revision.updatedAt
@@ -46,7 +46,7 @@ data class WorkflowRevisionWithSource(
             name: String,
             description: String,
             yamlSource: String,
-            steps: Step,
+            steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
             updatedAt: Instant = createdAt
@@ -99,7 +99,7 @@ data class WorkflowRevisionWithSource(
     /**
      * Update YAML source and steps (for inactive revision updates)
      */
-    fun updateContent(newYamlSource: String, newSteps: Step, newDescription: String? = null): WorkflowRevisionWithSource {
+    fun updateContent(newYamlSource: String, newSteps: List<Step>, newDescription: String? = null): WorkflowRevisionWithSource {
         if (newYamlSource.isBlank()) {
             throw InvalidWorkflowRevision("YAML source must not be blank")
         }

@@ -14,7 +14,7 @@ data class WorkflowRevisionResponse(
     val name: String,
     val description: String,
     val active: Boolean,
-    val rootStep: Step,
+    val steps: List<Step>,
     val createdAt: Instant,
     val updatedAt: Instant
 )
