@@ -8,7 +8,12 @@
       "Bash(mvn test:*)",
       "Bash(mvn kotlin:compile:*)",
       "Bash(mvn compile:*)",
-      "Bash(mvn install:*)"
+      "Bash(mvn install:*)",
+      "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
+      "Bash(.specify/scripts/bash/setup-plan.sh:*)",
+      "Bash(.specify/scripts/bash/update-agent-context.sh:*)",
+      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(git rev-parse:*)"
     ],
     "deny": [],
     "ask": []
