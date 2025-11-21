@@ -94,3 +94,10 @@ The workflow system uses a hierarchical task model:
   - YAML configuration (quarkus-config-yaml)
 - Configuration file: `api/src/main/resources/application.yml`
 - Default server port: 8080 (configurable in application.yml)
+
+## Active Technologies
+- Kotlin 2.2.0+ on Java 21 JVM + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (YAML/JSON parsing), JDBI or Exposed (database access), RFC 7807 JSON Problem library (001-workflow-management)
+- PostgreSQL 18 with JSONB for parsed workflow steps and TEXT for original YAML (001-workflow-management)
+
+## Recent Changes
+- 001-workflow-management: Added Kotlin 2.2.0+ on Java 21 JVM + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (YAML/JSON parsing), JDBI or Exposed (database access), RFC 7807 JSON Problem library
