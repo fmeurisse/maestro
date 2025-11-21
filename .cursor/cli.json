@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "editor": {
+    "vimMode": true
+  },
+  "permissions": {
+    "allow": [
+      "Shell(.specify/scripts/bash/check-prerequisites.sh)",
+      "Shell(mvn clean install)",
+      "Shell(mvn clean compile)",
+      "Shell(mvn compile)",
+      "Shell(mvn install)"
+    ],
+    "deny": []
+  }
+}
