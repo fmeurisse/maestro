@@ -25,13 +25,13 @@ import java.time.Instant
 data class WorkflowRevision(
     override val namespace: String,
     override val id: String,
-    override val version: Int,
+    override val version: Int = 0,
     val name: String,
     val description: String,
     val steps: List<Step>,
     val active: Boolean = false,
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Instant = Instant.now(),
+    val updatedAt: Instant = Instant.now()
 ): IWorkflowRevisionID {
 
     fun validate(): WorkflowRevision = this.apply {
@@ -78,7 +78,7 @@ data class WorkflowRevision(
         fun create(
             namespace: String,
             id: String,
-            version: Int,
+            version: Int = 0,
             name: String,
             description: String,
             steps: List<Step>,

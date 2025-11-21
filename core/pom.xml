@@ -90,6 +90,13 @@
             <artifactId>kotest-framework-api-jvm</artifactId>
             <scope>test</scope>
         </dependency>
+        
+        <!-- MockK for mocking -->
+        <dependency>
+            <groupId>io.mockk</groupId>
+            <artifactId>mockk-jvm</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

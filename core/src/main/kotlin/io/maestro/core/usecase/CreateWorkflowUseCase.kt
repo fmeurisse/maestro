@@ -10,6 +10,7 @@ import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import java.time.Clock
 import java.time.Instant
 
 /**
@@ -22,7 +23,8 @@ import java.time.Instant
 @ApplicationScoped
 class CreateWorkflowUseCase @Inject constructor(
     private val repository: IWorkflowRevisionRepository,
-    private val yamlParser: WorkflowYamlParser
+    private val yamlParser: WorkflowYamlParser,
+    private val clock: Clock = Clock.systemUTC()
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -47,8 +49,8 @@ class CreateWorkflowUseCase @Inject constructor(
     fun execute(yaml: String): WorkflowRevisionID {
         logger.info { "Executing workflow creation use case" }
 
-        // Parse YAML to extract workflow data
-        val parsedData = yamlParser.parseRevision(yaml)
+        // Parse YAML to extract workflow data // REQ-WF-002: First revision is version 1
+        val parsedData = yamlParser.parseRevision(yaml, false).copy(version = 1)
         logger.debug { "Parsed workflow data: ${parsedData.namespace}/${parsedData.id}" }
 
         // REQ-WF-004: Validate uniqueness
@@ -63,7 +65,7 @@ class CreateWorkflowUseCase @Inject constructor(
         parsedData.validate()
 
         // REQ-WF-002, REQ-WF-003, REQ-WF-005: Create revision with defaults
-        val now = Instant.now()
+        val now = Instant.now(clock)
         val revision = WorkflowRevision(
             namespace = parsedData.namespace,
             id = parsedData.id,
