@@ -2,7 +2,7 @@ package io.maestro.api.resource
 
 import io.maestro.api.dto.WorkflowRevisionResponse
 import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
+import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.usecase.CreateWorkflowUseCase
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID

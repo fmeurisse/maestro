@@ -1,7 +1,5 @@
 package io.maestro.api.exception
 
-import io.maestro.core.exception.WorkflowAlreadyExistsException
-import io.maestro.core.exception.WorkflowNotFoundException
 import io.maestro.model.exception.MaestroException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
@@ -42,6 +40,7 @@ data class ProblemDetail(
  * - MalformedWorkflowRevisionIDException (400)
  * - InvalidWorkflowRevision (400)
  * - WorkflowRevisionParsingException (400)
+ * - WorkflowAlreadyExistsException (409)
  * 
  * The exception's type, title, status, and message are used directly from the exception,
  * ensuring consistency with the RFC 7807 Problem Details format.
@@ -72,55 +71,7 @@ class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
     }
 }
 
-/**
- * Maps WorkflowAlreadyExistsException to 409 Conflict
- */
-@Provider
-class WorkflowAlreadyExistsExceptionMapper : ExceptionMapper<WorkflowAlreadyExistsException> {
 
-    private val logger = KotlinLogging.logger {}
-
-    override fun toResponse(exception: WorkflowAlreadyExistsException): Response {
-        logger.warn { "Workflow already exists: ${exception.message}" }
-        
-        val problemDetail = ProblemDetail(
-            type = URI.create("/problems/workflow-already-exists"),
-            title = "Workflow Already Exists",
-            status = 409,
-            detail = exception.message ?: "Workflow already exists"
-        )
-
-        return Response.status(Response.Status.CONFLICT)
-            .entity(problemDetail)
-            .type("application/problem+json")
-            .build()
-    }
-}
-
-/**
- * Maps WorkflowNotFoundException to 404 Not Found
- */
-@Provider
-class WorkflowNotFoundExceptionMapper : ExceptionMapper<WorkflowNotFoundException> {
-
-    private val logger = KotlinLogging.logger {}
-
-    override fun toResponse(exception: WorkflowNotFoundException): Response {
-        logger.warn { "Workflow not found: ${exception.message}" }
-        
-        val problemDetail = ProblemDetail(
-            type = URI.create("/problems/workflow-not-found"),
-            title = "Workflow Not Found",
-            status = 404,
-            detail = exception.message ?: "Workflow not found"
-        )
-
-        return Response.status(Response.Status.NOT_FOUND)
-            .entity(problemDetail)
-            .type("application/problem+json")
-            .build()
-    }
-}
 
 /**
  * Generic exception mapper for unhandled exceptions

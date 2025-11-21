@@ -2,10 +2,10 @@ package io.maestro.plugins.postgres
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import io.maestro.core.workflow.ActiveRevisionConflictException
-import io.maestro.core.workflow.WorkflowAlreadyExistsException
-import io.maestro.core.workflow.WorkflowNotFoundException
-import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
+import io.maestro.core.exception.ActiveRevisionConflictException
+import io.maestro.core.exception.WorkflowAlreadyExistsException
+import io.maestro.core.exception.WorkflowNotFoundException
+import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID

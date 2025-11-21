@@ -1,6 +1,11 @@
 package io.maestro.api.workflow.errors
 
-import io.maestro.core.workflow.WorkflowException
+import io.maestro.core.exception.ActiveRevisionConflictException
+import io.maestro.core.exception.InvalidStepException
+import io.maestro.core.exception.InvalidYamlException
+import io.maestro.core.exception.ValidationException
+import io.maestro.core.exception.WorkflowException
+import io.maestro.core.exception.WorkflowNotFoundException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
 import jakarta.ws.rs.ext.Provider
@@ -16,11 +21,13 @@ import org.zalando.problem.Status
  * 
  * This mapper handles:
  * - WorkflowNotFoundException (404)
- * - WorkflowAlreadyExistsException (409)
  * - ActiveRevisionConflictException (409)
  * - InvalidYamlException (400)
  * - InvalidStepException (400)
  * - ValidationException (400)
+ * 
+ * Note: WorkflowAlreadyExistsException is now handled by MaestroExceptionMapper
+ * as it inherits from MaestroException.
  */
 @Provider
 class JsonProblemExceptionMapper : ExceptionMapper<WorkflowException> {
@@ -48,12 +55,11 @@ class JsonProblemExceptionMapper : ExceptionMapper<WorkflowException> {
      */
     private fun getTitle(exception: WorkflowException): String {
         return when (exception) {
-            is io.maestro.core.workflow.WorkflowNotFoundException -> "Workflow Not Found"
-            is io.maestro.core.workflow.WorkflowAlreadyExistsException -> "Workflow Already Exists"
-            is io.maestro.core.workflow.ActiveRevisionConflictException -> "Active Revision Conflict"
-            is io.maestro.core.workflow.InvalidYamlException -> "Invalid YAML"
-            is io.maestro.core.workflow.InvalidStepException -> "Invalid Step"
-            is io.maestro.core.workflow.ValidationException -> "Validation Error"
+            is WorkflowNotFoundException -> "Workflow Not Found"
+            is ActiveRevisionConflictException -> "Active Revision Conflict"
+            is InvalidYamlException -> "Invalid YAML"
+            is InvalidStepException -> "Invalid Step"
+            is ValidationException -> "Validation Error"
         }
     }
 }

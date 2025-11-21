@@ -1,15 +1,15 @@
 package io.maestro.core.usecase
 
-import io.maestro.core.workflow.WorkflowAlreadyExistsException
+import io.github.oshai.kotlinlogging.KotlinLogging
+import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
+import io.maestro.core.exception.WorkflowAlreadyExistsException
 import io.maestro.model.WorkflowID
-import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevision
+import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
-import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.Instant
 
 /**
@@ -42,11 +42,11 @@ class CreateWorkflowUseCase @Inject constructor(
      * @param yaml Raw YAML string containing workflow definition
      * @return The created workflow revision (without YAML source)
      * @throws WorkflowAlreadyExistsException if workflow already exists (REQ-WF-004)
-     * @throws WorkflowRevisionParsingException if validation or parsing fails (REQ-WF-006)
+     * @throws io.maestro.core.exception.WorkflowRevisionParsingException if validation or parsing fails (REQ-WF-006)
      */
     fun execute(yaml: String): WorkflowRevisionID {
         logger.info { "Executing workflow creation use case" }
-        
+
         // Parse YAML to extract workflow data
         val parsedData = yamlParser.parseRevision(yaml)
         logger.debug { "Parsed workflow data: ${parsedData.namespace}/${parsedData.id}" }
@@ -55,9 +55,7 @@ class CreateWorkflowUseCase @Inject constructor(
         val workflowId = WorkflowID(parsedData.namespace, parsedData.id)
         if (repository.exists(workflowId)) {
             logger.warn { "Workflow already exists: $workflowId" }
-            throw WorkflowAlreadyExistsException(
-                WorkflowRevisionID(parsedData.namespace, parsedData.id, 1)
-            )
+            throw WorkflowAlreadyExistsException(workflowId)
         }
 
         // REQ-WF-006: Validate workflow data

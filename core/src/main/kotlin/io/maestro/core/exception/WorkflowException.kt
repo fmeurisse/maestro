@@ -1,4 +1,4 @@
-package io.maestro.core.workflow
+package io.maestro.core.exception
 
 import io.maestro.model.WorkflowRevisionID
 import java.net.URI
@@ -30,16 +30,6 @@ class WorkflowNotFoundException(id: WorkflowRevisionID) :
         status = 404
     )
 
-/**
- * Thrown when attempting to create a workflow that already exists.
- * Maps to 409 Conflict.
- */
-class WorkflowAlreadyExistsException(id: WorkflowRevisionID) :
-    WorkflowException(
-        message = "Workflow revision already exists: $id",
-        problemType = URI.create("https://maestro.io/problems/workflow-exists"),
-        status = 409
-    )
 
 /**
  * Thrown when attempting to modify or delete an active revision.

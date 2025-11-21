@@ -14,9 +14,9 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain as stringShouldContain
 import io.maestro.core.steps.LogTask
-import io.maestro.core.workflow.ActiveRevisionConflictException
-import io.maestro.core.workflow.WorkflowAlreadyExistsException
-import io.maestro.core.workflow.WorkflowNotFoundException
+import io.maestro.core.exception.ActiveRevisionConflictException
+import io.maestro.core.exception.WorkflowAlreadyExistsException
+import io.maestro.core.exception.WorkflowNotFoundException
 import io.maestro.model.*
 import org.jdbi.v3.core.Jdbi
 import org.testcontainers.containers.PostgreSQLContainer
