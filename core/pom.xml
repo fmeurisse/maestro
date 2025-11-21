@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>core</artifactId>
-    <name>core</name>
+    <name>Maestro :: Core</name>
     <description>Core module</description>
 
     <dependencies>
@@ -51,6 +51,23 @@
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
+                <configuration>
+                    <jvmTarget>${java.version}</jvmTarget>
+                    <compilerPlugins>
+                        <plugin>all-open</plugin>
+                    </compilerPlugins>
+                    <pluginOptions>
+                        <option>all-open:annotation=jakarta.enterprise.context.ApplicationScoped</option>
+                        <option>all-open:annotation=jakarta.inject.Singleton</option>
+                    </pluginOptions>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-allopen</artifactId>
+                        <version>${kotlin.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

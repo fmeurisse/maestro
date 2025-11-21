@@ -6,7 +6,7 @@
   <artifactId>maestro</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
-  <name>maestro</name>
+  <name>Maestro</name>
   <description>Maestro project</description>
   <properties>
     <java.version>21</java.version>
@@ -36,10 +36,11 @@
     </dependencies>
   </dependencyManagement>
   <modules>
+    <module>model</module>
     <module>core</module>
     <module>api</module>
-    <module>ui</module>
-    <module>model</module>
+    <module>plugins/postgres</module>
+<!--    <module>ui</module>-->
   </modules>
   <build>
     <pluginManagement>

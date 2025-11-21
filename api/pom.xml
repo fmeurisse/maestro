@@ -10,15 +10,28 @@
     </parent>
 
     <artifactId>api</artifactId>
-    <name>api</name>
+    <name>Maestro :: Api</name>
     <description>API module</description>
 
     <dependencies>
         <dependency>
             <groupId>io.maestro</groupId>
+            <artifactId>model</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.maestro</groupId>
             <artifactId>core</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.maestro.plugins</groupId>
+            <artifactId>maestro-plugins-postgres</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
@@ -40,6 +53,12 @@
             <artifactId>quarkus-config-yaml</artifactId>
         </dependency>
 
+        <!-- JDBC for DataSource -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+
         <!-- Jackson for YAML support in API responses -->
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -58,6 +77,18 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-validator</artifactId>
+        </dependency>
+
+        <!-- Zalando Problem for RFC 7807 JSON Problem responses -->
+        <dependency>
+            <groupId>org.zalando</groupId>
+            <artifactId>problem</artifactId>
+            <version>0.27.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.zalando</groupId>
+            <artifactId>jackson-datatype-problem</artifactId>
+            <version>0.27.1</version>
         </dependency>
 
         <dependency>
@@ -149,6 +180,7 @@
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
+                        <kotest.framework.classpath.scanning.autoscan.disable>true</kotest.framework.classpath.scanning.autoscan.disable>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -168,6 +200,7 @@
                         <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
+                        <kotest.framework.classpath.scanning.autoscan.disable>true</kotest.framework.classpath.scanning.autoscan.disable>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
