@@ -1,0 +1,501 @@
+# Implementation Tasks: Workflow Management
+
+**Feature Branch**: `001-workflow-management`
+**Generated**: 2025-11-21
+**Status**: Ready for implementation
+
+## Task Format
+
+```
+- [ ] [TaskID] [Priority] [Story] Description (file_path:line or module)
+```
+
+**Priority Markers**:
+- `[P]` = Prerequisite (must complete before user stories)
+- `[P1]` = High priority (MVP - Create and Version Workflows)
+- `[P2]` = Medium priority (Activate and Manage Revision State)
+- `[P3]` = Lower priority (Update/Delete operations)
+
+**Story Markers**:
+- `[US1]` = User Story 1 - Create and Version Workflows
+- `[US2]` = User Story 2 - Activate and Manage Revision State
+- `[US3]` = User Story 3 - Update Inactive Revisions
+- `[US4]` = User Story 4 - Delete Revisions and Workflows
+
+---
+
+## Phase 0: Prerequisites and Setup
+
+**Goal**: Establish project structure, dependencies, and foundational code before implementing user stories.
+
+### Module Setup
+
+- [X] T001 [P] Create `plugins/postgres-repository` module with pom.xml (plugins/postgres-repository/pom.xml)
+- [X] T002 [P] Add PostgreSQL driver dependency to postgres-repository pom.xml (plugins/postgres-repository/pom.xml)
+- [X] T003 [P] Add JDBI 3.x dependencies to postgres-repository pom.xml (plugins/postgres-repository/pom.xml)
+- [X] T004 [P] Add Jackson YAML and Kotlin dependencies to api pom.xml (api/pom.xml)
+- [X] T005 [P] Add Zalando Problem dependency to api pom.xml (api/pom.xml)
+- [X] T006 [P] Add frontend-maven-plugin to ui pom.xml with Node 20.11.0 (ui/pom.xml)
+
+**Parallel Execution**: T001-T006 can all run in parallel (independent pom.xml modifications)
+
+### Database Schema
+
+- [X] T007 [P] Create PostgreSQL schema DDL with dual storage design (plugins/postgres-repository/src/main/resources/schema/workflow_revisions.sql)
+- [X] T008 [P] Create migration script for dual storage schema (plugins/postgres-repository/src/main/resources/schema/V001__create_workflow_revisions.sql)
+- [X] T009 [P] Configure database connection properties in application.yml (api/src/main/resources/application.yml)
+
+**Dependencies**: T007 must complete before T008
+
+### Domain Model (model module)
+
+- [X] T010 [P] Create ValidationException domain exception (model/src/main/kotlin/io/maestro/model/workflow/ValidationException.kt)
+- [X] T011 [P] Create WorkflowRevisionID value object (model/src/main/kotlin/io/maestro/model/workflow/WorkflowRevisionID.kt)
+- [X] T012 [P] Create WorkflowID value object (model/src/main/kotlin/io/maestro/model/workflow/WorkflowID.kt)
+- [X] T013 [P] Create WorkflowRevision entity with factory method (model/src/main/kotlin/io/maestro/model/workflow/WorkflowRevision.kt)
+- [X] T014 [P] Create WorkflowRevisionWithSource entity with composition pattern (model/src/main/kotlin/io/maestro/model/workflow/WorkflowRevisionWithSource.kt)
+- [X] T015 [P] Write unit tests for WorkflowRevision validation (model/src/test/kotlin/io/maestro/model/workflow/WorkflowRevisionTest.kt)
+- [X] T016 [P] Write unit tests for WorkflowRevisionWithSource validation (model/src/test/kotlin/io/maestro/model/workflow/WorkflowRevisionWithSourceTest.kt)
+
+**Dependencies**: T010 → T013, T010 → T014, T011-T012 independent, T013 → T015, T014 → T016
+**Parallel Execution**: After T010, T011 and T012 can run in parallel; T013 and T014 can run in parallel; T015 and T016 can run in parallel
+
+### Core Interfaces (core module)
+
+- [X] T017 [P] Create WorkflowException sealed class hierarchy (core/src/main/kotlin/io/maestro/core/workflow/WorkflowException.kt)
+- [X] T018 [P] Create IWorkflowRevisionRepository interface with dual API (core/src/main/kotlin/io/maestro/core/workflow/repository/IWorkflowRevisionRepository.kt)
+
+**Dependencies**: T017 independent, T018 depends on T011-T014
+**Parallel Execution**: T017 and T018 can run in parallel if T011-T014 are complete
+
+### API Configuration (api module)
+
+- [X] T019 [P] Create StepTypeProvider interface for plugin step registration (api/src/main/kotlin/io/maestro/api/config/StepTypeProvider.kt)
+- [X] T020 [P] Create StepTypeRegistry with ServiceLoader discovery (api/src/main/kotlin/io/maestro/api/config/StepTypeRegistry.kt)
+- [X] T021 [P] Create JacksonConfig with runtime step type registration (api/src/main/kotlin/io/maestro/api/config/JacksonConfig.kt)
+- [X] T022 [P] Create JSON Problem exception mapper for domain exceptions (api/src/main/kotlin/io/maestro/api/workflow/errors/JsonProblemExceptionMapper.kt)
+- [X] T023 [P] Create WorkflowProblemTypes constants (api/src/main/kotlin/io/maestro/api/workflow/errors/WorkflowProblemTypes.kt)
+
+**Dependencies**: T019 → T020 → T021, T017 → T022, T023 independent
+**Parallel Execution**: T022 and T023 can run in parallel after T017
+
+### Repository Implementation (plugins/postgres-repository module)
+
+- [X] T024 [P] Create DatabaseConfig for JDBI configuration (plugins/postgres-repository/src/main/kotlin/io/maestro/plugins/postgres/config/DatabaseConfig.kt)
+- [X] T025 [P] Create PostgresWorkflowRevisionRepository with dual storage queries (plugins/postgres-repository/src/main/kotlin/io/maestro/plugins/postgres/PostgresWorkflowRevisionRepository.kt)
+- [ ] T026 [P] Write repository integration tests with Testcontainers (plugins/postgres-repository/src/test/kotlin/io/maestro/plugins/postgres/PostgresWorkflowRevisionRepositoryTest.kt)
+
+**Dependencies**: T007-T009 → T024, T018 → T025, T025 → T026
+
+---
+
+## Phase 1: User Story 1 - Create and Version Workflows (P1 - MVP)
+
+**Goal**: Implement FR-001 through FR-008 - Accept YAML workflows, validate, version, and persist.
+
+### YAML Parsing and Validation (core module)
+
+- [ ] T027 [P1] [US1] Create YamlWorkflowParser with Jackson YAML (core/src/main/kotlin/io/maestro/core/workflow/validation/YamlWorkflowParser.kt)
+- [ ] T028 [P1] [US1] Create WorkflowValidator for business rule validation (core/src/main/kotlin/io/maestro/core/workflow/validation/WorkflowValidator.kt)
+- [ ] T029 [P1] [US1] Create StepValidator for step tree validation (core/src/main/kotlin/io/maestro/core/workflow/validation/StepValidator.kt)
+- [ ] T030 [P1] [US1] Write unit tests for YamlWorkflowParser with valid and invalid YAML (core/src/test/kotlin/io/maestro/core/workflow/validation/YamlWorkflowParserTest.kt)
+- [ ] T031 [P1] [US1] Write unit tests for WorkflowValidator with edge cases (core/src/test/kotlin/io/maestro/core/workflow/validation/WorkflowValidatorTest.kt)
+- [ ] T032 [P1] [US1] Write unit tests for StepValidator with nested structures (core/src/test/kotlin/io/maestro/core/workflow/validation/StepValidatorTest.kt)
+
+**Dependencies**: T021 → T027, T027 → T028-T029, T027 → T030, T028 → T031, T029 → T032
+**Parallel Execution**: T028 and T029 can run in parallel after T027; T030-T032 can run in parallel after their respective implementations
+
+### Create Workflow Use Case (core module)
+
+- [ ] T033 [P1] [US1] Create CreateWorkflowUseCase for first revision (core/src/main/kotlin/io/maestro/core/workflow/usecases/CreateWorkflowUseCase.kt)
+- [ ] T034 [P1] [US1] Write unit tests for CreateWorkflowUseCase with mocked repository (core/src/test/kotlin/io/maestro/core/workflow/usecases/CreateWorkflowUseCaseTest.kt)
+- [ ] T035 [P1] [US1] Create CreateRevisionUseCase for subsequent revisions (core/src/main/kotlin/io/maestro/core/workflow/usecases/CreateRevisionUseCase.kt)
+- [ ] T036 [P1] [US1] Write unit tests for CreateRevisionUseCase with version sequencing (core/src/test/kotlin/io/maestro/core/workflow/usecases/CreateRevisionUseCaseTest.kt)
+
+**Dependencies**: T027-T029 → T033, T018 → T033, T033 → T034, T033 → T035, T035 → T036
+**Parallel Execution**: T034 and T035 can run in parallel after T033 completes
+
+### API Endpoints for Create/Version (api module)
+
+- [ ] T037 [P1] [US1] Create WorkflowRequest DTO for create operations (api/src/main/kotlin/io/maestro/api/workflow/dto/WorkflowRequest.kt)
+- [ ] T038 [P1] [US1] Create WorkflowResponse DTO with YAML source (api/src/main/kotlin/io/maestro/api/workflow/dto/WorkflowResponse.kt)
+- [ ] T039 [P1] [US1] Create WorkflowResource with POST /workflows endpoint (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt)
+- [ ] T040 [P1] [US1] Create POST /workflows/{namespace}/{id} endpoint for new revisions (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:100)
+- [ ] T041 [P1] [US1] Create GET /workflows/{namespace}/{id} endpoint for listing revisions (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:150)
+- [ ] T042 [P1] [US1] Create GET /workflows/{namespace}/{id}/{version} endpoint for specific revision (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:200)
+
+**Dependencies**: T038 independent, T037 independent, T033 → T039, T035 → T040, T039-T040 → T041-T042
+**Parallel Execution**: T037 and T038 can run in parallel; after T039-T040, T041 and T042 can run in parallel
+
+### API Integration Tests for Create/Version
+
+- [ ] T043 [P1] [US1] Write REST Assured test for POST /workflows with valid YAML (tests/integration/src/test/kotlin/io/maestro/integration/CreateWorkflowIT.kt)
+- [ ] T044 [P1] [US1] Write REST Assured test for POST /workflows with invalid YAML (tests/integration/src/test/kotlin/io/maestro/integration/CreateWorkflowIT.kt:50)
+- [ ] T045 [P1] [US1] Write REST Assured test for POST /workflows with duplicate namespace+id (tests/integration/src/test/kotlin/io/maestro/integration/CreateWorkflowIT.kt:100)
+- [ ] T046 [P1] [US1] Write REST Assured test for POST /workflows/{namespace}/{id} new revision (tests/integration/src/test/kotlin/io/maestro/integration/CreateRevisionIT.kt)
+- [ ] T047 [P1] [US1] Write REST Assured test for GET /workflows/{namespace}/{id} listing (tests/integration/src/test/kotlin/io/maestro/integration/GetRevisionsIT.kt)
+
+**Dependencies**: T039-T042 → T043-T047
+**Parallel Execution**: T043-T047 can all run in parallel after API endpoints are complete
+
+---
+
+## Phase 2: User Story 2 - Activate and Manage Revision State (P2)
+
+**Goal**: Implement FR-009, FR-011, FR-012 - Activate/deactivate revisions with multi-active support.
+
+### Activation Use Cases (core module)
+
+- [ ] T048 [P2] [US2] Create ActivateRevisionUseCase with multi-active support (core/src/main/kotlin/io/maestro/core/workflow/usecases/ActivateRevisionUseCase.kt)
+- [ ] T049 [P2] [US2] Write unit tests for ActivateRevisionUseCase (core/src/test/kotlin/io/maestro/core/workflow/usecases/ActivateRevisionUseCaseTest.kt)
+- [ ] T050 [P2] [US2] Create DeactivateRevisionUseCase (core/src/main/kotlin/io/maestro/core/workflow/usecases/DeactivateRevisionUseCase.kt)
+- [ ] T051 [P2] [US2] Write unit tests for DeactivateRevisionUseCase (core/src/test/kotlin/io/maestro/core/workflow/usecases/DeactivateRevisionUseCaseTest.kt)
+
+**Dependencies**: T018 → T048, T048 → T049, T018 → T050, T050 → T051
+**Parallel Execution**: T048 and T050 can run in parallel; T049 and T051 can run in parallel
+
+### API Endpoints for Activation (api module)
+
+- [ ] T052 [P2] [US2] Create POST /workflows/{namespace}/{id}/{version}/activate endpoint (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:250)
+- [ ] T053 [P2] [US2] Create POST /workflows/{namespace}/{id}/{version}/deactivate endpoint (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:300)
+- [ ] T054 [P2] [US2] Add ?active=true query parameter support to GET /workflows/{namespace}/{id} (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:150)
+
+**Dependencies**: T048 → T052, T050 → T053, T041 → T054
+**Parallel Execution**: T052 and T053 can run in parallel; T054 is independent
+
+### API Integration Tests for Activation
+
+- [ ] T055 [P2] [US2] Write REST Assured test for POST /activate on inactive revision (tests/integration/src/test/kotlin/io/maestro/integration/ActivateRevisionIT.kt)
+- [ ] T056 [P2] [US2] Write REST Assured test for POST /deactivate on active revision (tests/integration/src/test/kotlin/io/maestro/integration/ActivateRevisionIT.kt:50)
+- [ ] T057 [P2] [US2] Write REST Assured test for multiple active revisions scenario (tests/integration/src/test/kotlin/io/maestro/integration/ActivateRevisionIT.kt:100)
+- [ ] T058 [P2] [US2] Write REST Assured test for GET with ?active=true filter (tests/integration/src/test/kotlin/io/maestro/integration/GetRevisionsIT.kt:100)
+
+**Dependencies**: T052-T054 → T055-T058
+**Parallel Execution**: T055-T058 can all run in parallel
+
+---
+
+## Phase 3: User Story 3 - Update Inactive Revisions (P3)
+
+**Goal**: Implement FR-010, FR-011, FR-012 - Update inactive revisions in place.
+
+### Update Use Case (core module)
+
+- [ ] T059 [P3] [US3] Create UpdateRevisionUseCase with active state check (core/src/main/kotlin/io/maestro/core/workflow/usecases/UpdateRevisionUseCase.kt)
+- [ ] T060 [P3] [US3] Write unit tests for UpdateRevisionUseCase with inactive revision (core/src/test/kotlin/io/maestro/core/workflow/usecases/UpdateRevisionUseCaseTest.kt)
+- [ ] T061 [P3] [US3] Write unit tests for UpdateRevisionUseCase rejecting active revision update (core/src/test/kotlin/io/maestro/core/workflow/usecases/UpdateRevisionUseCaseTest.kt:50)
+
+**Dependencies**: T018 → T059, T027-T029 → T059, T059 → T060-T061
+**Parallel Execution**: T060 and T061 can run in parallel after T059
+
+### API Endpoints for Update (api module)
+
+- [ ] T062 [P3] [US3] Create UpdateRevisionRequest DTO for partial updates (api/src/main/kotlin/io/maestro/api/workflow/dto/UpdateRevisionRequest.kt)
+- [ ] T063 [P3] [US3] Create PUT /workflows/{namespace}/{id}/{version} endpoint (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:350)
+
+**Dependencies**: T062 independent, T059 → T063
+
+### API Integration Tests for Update
+
+- [ ] T064 [P3] [US3] Write REST Assured test for PUT on inactive revision (tests/integration/src/test/kotlin/io/maestro/integration/UpdateRevisionIT.kt)
+- [ ] T065 [P3] [US3] Write REST Assured test for PUT on active revision (409 Conflict) (tests/integration/src/test/kotlin/io/maestro/integration/UpdateRevisionIT.kt:50)
+- [ ] T066 [P3] [US3] Write REST Assured test for partial update (description only) (tests/integration/src/test/kotlin/io/maestro/integration/UpdateRevisionIT.kt:100)
+
+**Dependencies**: T063 → T064-T066
+**Parallel Execution**: T064-T066 can all run in parallel
+
+---
+
+## Phase 4: User Story 4 - Delete Revisions and Workflows (P3)
+
+**Goal**: Implement FR-014, FR-015 - Delete individual revisions or entire workflows.
+
+### Delete Use Cases (core module)
+
+- [ ] T067 [P3] [US4] Create DeleteRevisionUseCase with active state check (core/src/main/kotlin/io/maestro/core/workflow/usecases/DeleteRevisionUseCase.kt)
+- [ ] T068 [P3] [US4] Write unit tests for DeleteRevisionUseCase with inactive revision (core/src/test/kotlin/io/maestro/core/workflow/usecases/DeleteRevisionUseCaseTest.kt)
+- [ ] T069 [P3] [US4] Write unit tests for DeleteRevisionUseCase rejecting active revision (core/src/test/kotlin/io/maestro/core/workflow/usecases/DeleteRevisionUseCaseTest.kt:50)
+- [ ] T070 [P3] [US4] Create DeleteWorkflowUseCase for deleting all revisions (core/src/main/kotlin/io/maestro/core/workflow/usecases/DeleteWorkflowUseCase.kt)
+- [ ] T071 [P3] [US4] Write unit tests for DeleteWorkflowUseCase (core/src/test/kotlin/io/maestro/core/workflow/usecases/DeleteWorkflowUseCaseTest.kt)
+
+**Dependencies**: T018 → T067, T067 → T068-T069, T018 → T070, T070 → T071
+**Parallel Execution**: T067 and T070 can run in parallel; T068-T069 can run in parallel; T071 independent
+
+### API Endpoints for Delete (api module)
+
+- [ ] T072 [P3] [US4] Create DELETE /workflows/{namespace}/{id}/{version} endpoint (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:400)
+- [ ] T073 [P3] [US4] Create DELETE /workflows/{namespace}/{id} endpoint for entire workflow (api/src/main/kotlin/io/maestro/api/workflow/WorkflowResource.kt:450)
+- [ ] T074 [P3] [US4] Create DeleteWorkflowResponse DTO with deleted count (api/src/main/kotlin/io/maestro/api/workflow/dto/DeleteWorkflowResponse.kt)
+
+**Dependencies**: T067 → T072, T070 → T073, T074 independent
+**Parallel Execution**: T072 and T073 can run in parallel after their use cases; T074 independent
+
+### API Integration Tests for Delete
+
+- [ ] T075 [P3] [US4] Write REST Assured test for DELETE single inactive revision (tests/integration/src/test/kotlin/io/maestro/integration/DeleteRevisionIT.kt)
+- [ ] T076 [P3] [US4] Write REST Assured test for DELETE active revision (409 Conflict) (tests/integration/src/test/kotlin/io/maestro/integration/DeleteRevisionIT.kt:50)
+- [ ] T077 [P3] [US4] Write REST Assured test for DELETE entire workflow (tests/integration/src/test/kotlin/io/maestro/integration/DeleteWorkflowIT.kt)
+- [ ] T078 [P3] [US4] Write REST Assured test for DELETE non-existent revision (404) (tests/integration/src/test/kotlin/io/maestro/integration/DeleteRevisionIT.kt:100)
+
+**Dependencies**: T072-T074 → T075-T078
+**Parallel Execution**: T075-T078 can all run in parallel
+
+---
+
+## Phase 5: React UI (All User Stories)
+
+**Goal**: Build React frontend with Monaco YAML editor and Cypress component tests.
+
+### UI Setup
+
+- [ ] T079 Create React app with Vite in ui/src/main/frontend (ui/src/main/frontend/package.json)
+- [ ] T080 Install Monaco Editor and React dependencies (ui/src/main/frontend/package.json)
+- [ ] T081 Install Cypress for component testing (ui/src/main/frontend/package.json)
+- [ ] T082 Create Cypress configuration with Vite (ui/src/main/frontend/cypress.config.ts)
+
+**Parallel Execution**: T079-T082 can all run sequentially (package management)
+
+### Core UI Components
+
+- [ ] T083 [US1] Create YamlEditor component with Monaco (ui/src/main/frontend/src/components/YamlEditor.tsx)
+- [ ] T084 [US1] Create WorkflowList component for listing workflows (ui/src/main/frontend/src/components/WorkflowList.tsx)
+- [ ] T085 [US1] Create WorkflowRevisions component for listing revisions (ui/src/main/frontend/src/components/WorkflowRevisions.tsx)
+- [ ] T086 [US2] Create RevisionActions component for activate/deactivate/delete (ui/src/main/frontend/src/components/RevisionActions.tsx)
+- [ ] T087 [US1] Create workflowApi service for API client (ui/src/main/frontend/src/services/workflowApi.ts)
+
+**Dependencies**: T083-T087 depend on T079-T082 completing
+**Parallel Execution**: T083-T087 can all run in parallel
+
+### UI Component Tests (Cypress)
+
+- [ ] T088 [US1] Write Cypress test for YamlEditor displays content (ui/src/main/frontend/cypress/component/YamlEditor.cy.tsx)
+- [ ] T089 [US1] Write Cypress test for YamlEditor onChange callback (ui/src/main/frontend/cypress/component/YamlEditor.cy.tsx:20)
+- [ ] T090 [US1] Write Cypress test for WorkflowList renders workflows (ui/src/main/frontend/cypress/component/WorkflowList.cy.tsx)
+- [ ] T091 [US2] Write Cypress test for RevisionActions activate button (ui/src/main/frontend/cypress/component/RevisionActions.cy.tsx)
+
+**Dependencies**: T083 → T088-T089, T084 → T090, T086 → T091
+**Parallel Execution**: T088-T091 can all run in parallel after their components
+
+### UI Integration
+
+- [ ] T092 Create main App component with routing (ui/src/main/frontend/src/App.tsx)
+- [ ] T093 Configure frontend-maven-plugin npm build execution (ui/pom.xml)
+- [ ] T094 Configure Quarkus to serve static frontend assets (api/src/main/resources/application.yml)
+
+**Dependencies**: T083-T087 → T092, T006 → T093, T092 → T094
+
+---
+
+## Phase 6: Polish and Documentation
+
+**Goal**: Finalize documentation, performance testing, and edge case handling.
+
+### Documentation
+
+- [ ] T095 Update quickstart.md with dual storage schema examples (specs/001-workflow-management/quickstart.md)
+- [ ] T096 Add OpenAPI UI integration to Quarkus (api/pom.xml)
+- [ ] T097 Create API usage examples in quickstart.md (specs/001-workflow-management/quickstart.md:200)
+
+**Parallel Execution**: T095-T097 can run in parallel
+
+### Performance and Edge Cases
+
+- [ ] T098 Add database connection pooling configuration (api/src/main/resources/application.yml)
+- [ ] T099 Write integration test for concurrent revision creation (tests/integration/src/test/kotlin/io/maestro/integration/ConcurrencyIT.kt)
+- [ ] T100 Write integration test for deeply nested step validation (tests/integration/src/test/kotlin/io/maestro/integration/DeepNestingIT.kt)
+- [ ] T101 Write integration test for large workflow with 1000 revisions (tests/integration/src/test/kotlin/io/maestro/integration/LargeWorkflowIT.kt)
+
+**Dependencies**: T098 independent, T099-T101 depend on complete API implementation
+**Parallel Execution**: T099-T101 can run in parallel
+
+### Final Validation
+
+- [ ] T102 Run all unit tests across all modules (mvn test)
+- [ ] T103 Run all integration tests with Testcontainers (mvn verify -pl tests/integration)
+- [ ] T104 Run Cypress component tests (cd ui/src/main/frontend && npm run test:unit)
+- [ ] T105 Validate OpenAPI spec matches implementation (api/src/test/kotlin/io/maestro/api/OpenApiValidationTest.kt)
+- [ ] T106 Run performance benchmarks for SC-001 through SC-007 (tests/integration/src/test/kotlin/io/maestro/integration/PerformanceIT.kt)
+
+**Dependencies**: All previous tasks → T102-T106
+**Parallel Execution**: T102-T106 can run in parallel as final validation
+
+---
+
+## Task Summary
+
+**Total Tasks**: 106
+
+**By Priority**:
+- Prerequisites (P): 26 tasks (T001-T026)
+- P1 (MVP - Create/Version): 21 tasks (T027-T047)
+- P2 (Activation): 11 tasks (T048-T058)
+- P3 (Update): 8 tasks (T059-T066)
+- P3 (Delete): 12 tasks (T067-T078)
+- UI (All Stories): 16 tasks (T079-T094)
+- Polish: 12 tasks (T095-T106)
+
+**By Module**:
+- model: 7 tasks
+- core: 24 tasks (use cases + validators)
+- api: 15 tasks (resources + DTOs + config)
+- plugins/postgres-repository: 6 tasks
+- ui: 16 tasks
+- tests/integration: 18 tasks
+- documentation/config: 20 tasks
+
+**Critical Path** (longest dependency chain):
+```
+T001 → T007 → T024 → T025 → T033 → T039 → T043 → T048 → T052 → T055 → T102
+(11 sequential tasks = minimum implementation time)
+```
+
+**Maximum Parallelization Opportunities**:
+- Phase 0: Up to 6 tasks in parallel (T001-T006)
+- Phase 1: Up to 5 tasks in parallel (T043-T047)
+- Phase 2: Up to 4 tasks in parallel (T055-T058)
+- Phase 3: Up to 3 tasks in parallel (T064-T066)
+- Phase 4: Up to 4 tasks in parallel (T075-T078)
+- Phase 5: Up to 5 tasks in parallel (T083-T087)
+
+---
+
+## Implementation Recommendations
+
+### Week 1: Foundation (Phase 0)
+- Complete all prerequisite tasks (T001-T026)
+- Focus on model entities and repository interface
+- Set up database schema and JDBI configuration
+- Target: Have all foundational code and tests passing
+
+### Week 2: MVP - User Story 1 (Phase 1)
+- Implement YAML parsing and validation (T027-T032)
+- Build CreateWorkflow and CreateRevision use cases (T033-T036)
+- Create REST API endpoints for workflow creation (T037-T042)
+- Write API integration tests (T043-T047)
+- Target: Can create and version workflows via API
+
+### Week 3: Activation - User Story 2 (Phase 2)
+- Implement activation use cases (T048-T051)
+- Create activation API endpoints (T052-T054)
+- Write API integration tests (T055-T058)
+- Target: Can activate/deactivate revisions with multi-active support
+
+### Week 4: Update/Delete - User Stories 3 & 4 (Phases 3 & 4)
+- Implement update and delete use cases (T059-T071)
+- Create update and delete API endpoints (T062-T074)
+- Write API integration tests (T064-T066, T075-T078)
+- Target: Complete CRUD operations for workflows
+
+### Week 5: React UI (Phase 5)
+- Set up React app with Monaco Editor (T079-T082)
+- Build UI components (T083-T087)
+- Write Cypress component tests (T088-T091)
+- Integrate frontend with backend (T092-T094)
+- Target: Functional UI for all user stories
+
+### Week 6: Polish (Phase 6)
+- Update documentation (T095-T097)
+- Performance testing and edge cases (T098-T101)
+- Final validation and benchmarks (T102-T106)
+- Target: Production-ready feature
+
+---
+
+## Testing Strategy
+
+### Unit Tests (Per User Story)
+- Model validation tests (T015-T016)
+- Use case tests with mocked repository (T034, T036, T049, T051, T060-T061, T068-T069, T071)
+- Validator tests (T030-T032)
+
+### Integration Tests (Per User Story)
+- Repository contract tests (T026)
+- API endpoint tests with real database (T043-T047, T055-T058, T064-T066, T075-T078)
+- Concurrency and edge case tests (T099-T101)
+
+### UI Component Tests (Per User Story)
+- Cypress component tests for React components (T088-T091)
+
+### Performance Tests
+- Benchmark tests for success criteria SC-001 through SC-007 (T106)
+
+---
+
+## Dependencies Between User Stories
+
+**US1 (Create/Version) is prerequisite for all other stories**:
+- US2 (Activation) depends on US1 (need workflows to activate)
+- US3 (Update) depends on US1 (need workflows to update)
+- US4 (Delete) depends on US1 (need workflows to delete)
+
+**US2 (Activation) is prerequisite for**:
+- US3 (Update) testing (need to verify active revisions cannot be updated)
+- US4 (Delete) testing (need to verify active revisions cannot be deleted)
+
+**Independent Implementation**:
+- After US1 is complete, US2, US3, and US4 can be implemented in parallel
+- UI components (Phase 5) can be implemented in parallel with backend work after API contracts are established
+
+---
+
+## Risk Mitigation
+
+### High Risk Areas
+
+1. **YAML Parsing with Runtime Polymorphism** (T027, T021)
+   - Risk: Plugin step types not properly registered
+   - Mitigation: Comprehensive unit tests with ServiceLoader mocking
+
+2. **Concurrent Revision Creation** (T099)
+   - Risk: Version number conflicts
+   - Mitigation: Database unique constraints + optimistic locking
+
+3. **Dual Storage Consistency** (T025)
+   - Risk: TEXT and JSONB divergence
+   - Mitigation: Repository ensures atomic updates, computed columns auto-sync
+
+4. **Performance with Large Workflows** (T101, T106)
+   - Risk: Query performance degradation with 1000+ revisions
+   - Mitigation: Proper indexing on computed columns, pagination support
+
+### Medium Risk Areas
+
+1. **Jackson YAML Formatting Preservation** (T027)
+   - Risk: Original YAML formatting lost
+   - Mitigation: Store original YAML in TEXT column, parsed structure in JSONB
+
+2. **Multi-Active Revision Support** (T048, T057)
+   - Risk: Unexpected behavior with multiple active revisions
+   - Mitigation: Explicit acceptance tests for canary deployment scenarios
+
+---
+
+## Success Metrics Mapping
+
+| Success Criteria | Related Tasks | Validation Method |
+|------------------|---------------|-------------------|
+| SC-001: Create <500ms p95 | T033-T047, T106 | Performance benchmark (T106) |
+| SC-002: 100% version accuracy | T035, T046 | Integration tests (T046) |
+| SC-003: 10K workflows | T101, T106 | Large-scale integration test (T101) |
+| SC-004: 1K revisions <200ms | T101, T106 | Large-scale integration test (T101) |
+| SC-005: 100% YAML validation | T027-T032, T044 | Unit tests (T030) + integration (T044) |
+| SC-006: 100 concurrent ops | T099 | Concurrency integration test (T099) |
+| SC-007: Activate <300ms p95 | T048-T058, T106 | Performance benchmark (T106) |
+| SC-008: Multi-active zero conflicts | T057 | Integration test (T057) |
+| SC-009: 99.9% success rate | T102-T103 | All tests passing |
+| SC-010: Zero data corruption | T026 | Repository integration tests (T026) |
+
+---
+
+## Notes
+
+- All tasks follow TDD approach: write tests before or alongside implementation
+- Repository uses dual API pattern: methods with/without YAML source for performance
+- PostgreSQL schema uses dual storage (TEXT + JSONB) with computed columns
+- Step polymorphism configured at runtime via ServiceLoader for plugin extensibility
+- Domain validation uses factory methods throwing ValidationException
+- All API errors follow RFC 7807 JSON Problem format
+- React UI uses Monaco Editor for YAML editing with syntax highlighting
+- Cypress component tests ensure UI quality
+
+**Ready for Implementation**: All design artifacts complete, tasks dependency-ordered with parallel execution opportunities identified.
