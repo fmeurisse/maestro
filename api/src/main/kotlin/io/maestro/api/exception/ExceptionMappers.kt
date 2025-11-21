@@ -2,7 +2,6 @@ package io.maestro.api.exception
 
 import io.maestro.core.exception.WorkflowAlreadyExistsException
 import io.maestro.core.exception.WorkflowNotFoundException
-import io.maestro.core.exception.WorkflowValidationException
 import io.maestro.model.exception.MaestroException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
@@ -37,10 +36,11 @@ data class ProblemDetail(
 /**
  * Maps MaestroException (and all its subclasses) to RFC 7807 Problem Details responses.
  * 
- * This mapper handles all model-layer exceptions that extend MaestroException:
+ * This mapper handles all exceptions that extend MaestroException:
  * - MalformedWorkflowIDException (400)
  * - MalformedWorkflowRevisionIDException (400)
  * - InvalidWorkflowRevision (400)
+ * - WorkflowRevisionParsingException (400)
  * 
  * The exception's type, title, status, and message are used directly from the exception,
  * ensuring consistency with the RFC 7807 Problem Details format.
@@ -60,26 +60,6 @@ class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
         )
 
         return Response.status(statusCode)
-            .entity(problemDetail)
-            .type("application/problem+json")
-            .build()
-    }
-}
-
-/**
- * Maps WorkflowValidationException (from core layer) to 400 Bad Request
- */
-@Provider
-class WorkflowValidationExceptionMapper : ExceptionMapper<WorkflowValidationException> {
-    override fun toResponse(exception: WorkflowValidationException): Response {
-        val problemDetail = ProblemDetail(
-            type = URI.create("/problems/workflow-validation-failed"),
-            title = "Workflow Validation Failed",
-            status = 400,
-            detail = exception.message ?: "Validation failed"
-        )
-
-        return Response.status(Response.Status.BAD_REQUEST)
             .entity(problemDetail)
             .type("application/problem+json")
             .build()

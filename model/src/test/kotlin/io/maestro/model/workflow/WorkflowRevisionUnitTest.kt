@@ -17,7 +17,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
     feature("create method") {
         scenario("should create valid workflow revision with all properties") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "payment-workflow",
                 version = 1,
@@ -41,7 +41,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when namespace is blank") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "",
                     id = "workflow-1",
                     version = 1,
@@ -55,7 +55,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when id is blank") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "",
                     version = 1,
@@ -69,7 +69,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when namespace format is invalid") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "invalid namespace!",
                     id = "workflow-1",
                     version = 1,
@@ -84,7 +84,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when id format is invalid") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "invalid id!",
                     version = 1,
@@ -99,7 +99,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when version is zero") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
                     version = 0,
@@ -113,7 +113,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when version is negative") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
                     version = -1,
@@ -127,7 +127,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when name is blank") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
                     version = 1,
@@ -141,7 +141,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when namespace exceeds maximum length") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "a".repeat(101),
                     id = "workflow-1",
                     version = 1,
@@ -156,7 +156,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when id exceeds maximum length") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "a".repeat(101),
                     version = 1,
@@ -171,7 +171,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when name exceeds maximum length") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
                     version = 1,
@@ -186,7 +186,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
         scenario("should throw InvalidWorkflowRevision when description exceeds maximum length") {
             val exception = shouldThrow<InvalidWorkflowRevision> {
-                WorkflowRevision.create(
+                WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
                     version = 1,
@@ -200,7 +200,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should create revision with maximum length description") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 1,
@@ -212,7 +212,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should accept namespace with hyphens and underscores") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "prod-staging_test",
                 id = "workflow-1",
                 version = 1,
@@ -224,7 +224,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should accept id with hyphens and underscores") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "payment_processing-v2",
                 version = 1,
@@ -238,7 +238,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
     feature("activate method") {
         scenario("should change active flag to true and update timestamp") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 1,
@@ -261,7 +261,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
     feature("deactivate method") {
         scenario("should change active flag to false and update timestamp") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 1,
@@ -282,7 +282,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
     feature("withUpdatedTimestamp method") {
         scenario("should update only timestamp while preserving other properties") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 1,
@@ -303,7 +303,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
     feature("revisionId method") {
         scenario("should return correct composite identifier") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 2,
@@ -322,7 +322,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
 
     feature("workflowId method") {
         scenario("should return identifier without version") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 2,

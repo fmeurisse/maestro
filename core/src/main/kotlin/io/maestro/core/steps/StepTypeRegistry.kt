@@ -1,5 +1,7 @@
 package io.maestro.core.steps
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.jsontype.NamedType
 import io.maestro.model.steps.Step
 import kotlin.reflect.KClass
 import java.util.ServiceLoader
@@ -69,4 +71,8 @@ object StepTypeRegistry {
      */
     fun getAllTypes(): Map<String, KClass<out Step>> = registeredTypes.toMap()
 
+}
+
+fun ObjectMapper.registerStepTypes() {
+    StepTypeRegistry.getAllTypes().map { (type, kClass) -> NamedType(kClass.java, type) }
 }

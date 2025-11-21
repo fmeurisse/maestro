@@ -91,7 +91,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
 
     feature("fromRevision method") {
         scenario("should create instance from existing revision with yaml source") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 1,
@@ -108,7 +108,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when yaml source is blank") {
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace = "production",
                 id = "workflow-1",
                 version = 1,

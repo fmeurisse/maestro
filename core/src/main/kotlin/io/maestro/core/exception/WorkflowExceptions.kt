@@ -12,17 +12,7 @@ sealed class WorkflowException(message: String, cause: Throwable? = null) :
 class WorkflowAlreadyExistsException(message: String) : WorkflowException(message)
 
 /**
- * Thrown when workflow validation fails (REQ-WF-047 through REQ-WF-058)
- */
-class WorkflowValidationException(message: String, cause: Throwable? = null) :
-    WorkflowException(message, cause)
-
-/**
  * Thrown when a requested workflow is not found
  */
 class WorkflowNotFoundException(message: String) : WorkflowException(message)
 
-/**
- * Thrown when attempting an invalid operation on a workflow
- */
-class InvalidWorkflowOperationException(message: String) : WorkflowException(message)

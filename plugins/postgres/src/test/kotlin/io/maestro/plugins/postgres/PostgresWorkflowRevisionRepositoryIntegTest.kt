@@ -101,7 +101,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
         createdAt: Instant = Instant.now(),
         updatedAt: Instant = createdAt
     ): WorkflowRevision {
-        return WorkflowRevision.create(
+        return WorkflowRevision.validateAndCreate(
             namespace = namespace,
             id = id,
             version = version,

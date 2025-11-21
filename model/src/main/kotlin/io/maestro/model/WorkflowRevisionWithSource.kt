@@ -31,6 +31,9 @@ data class WorkflowRevisionWithSource(
     val createdAt: Instant get() = revision.createdAt
     val updatedAt: Instant get() = revision.updatedAt
 
+
+    fun toWorkflowRevisionID(): WorkflowRevisionID = revision.toWorkflowRevisionID()
+
     companion object {
         /**
          * Factory method with domain validation that throws domain exceptions.
@@ -54,7 +57,7 @@ data class WorkflowRevisionWithSource(
             if (yamlSource.isBlank()) {
                 throw InvalidWorkflowRevision("YAML source must not be blank")
             }
-            val revision = WorkflowRevision.create(
+            val revision = WorkflowRevision.validateAndCreate(
                 namespace, id, version, name, description,
                 steps, active, createdAt, updatedAt
             )

@@ -3,7 +3,6 @@ package io.maestro.core.usecase
 import io.maestro.core.workflow.WorkflowAlreadyExistsException
 import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
-import io.maestro.core.validation.WorkflowValidator
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevision
@@ -22,7 +21,6 @@ import java.time.Instant
 @ApplicationScoped
 class CreateWorkflowUseCase @Inject constructor(
     private val repository: IWorkflowRevisionRepository,
-    private val validator: WorkflowValidator,
     private val yamlParser: WorkflowYamlParser
 ) {
 
@@ -41,11 +39,11 @@ class CreateWorkflowUseCase @Inject constructor(
      * @param yaml Raw YAML string containing workflow definition
      * @return The created workflow revision (without YAML source)
      * @throws WorkflowAlreadyExistsException if workflow already exists (REQ-WF-004)
-     * @throws WorkflowValidationException if validation or parsing fails (REQ-WF-006)
+     * @throws WorkflowRevisionParsingException if validation or parsing fails (REQ-WF-006)
      */
-    fun execute(yaml: String): WorkflowRevision {
+    fun execute(yaml: String): WorkflowRevisionID {
         // Parse YAML to extract workflow data
-        val parsedData = yamlParser.parseWorkflowDefinition(yaml)
+        val parsedData = yamlParser.parseRevision(yaml)
 
         // REQ-WF-004: Validate uniqueness
         val workflowId = WorkflowID(parsedData.namespace, parsedData.id)
@@ -56,14 +54,7 @@ class CreateWorkflowUseCase @Inject constructor(
         }
 
         // REQ-WF-006: Validate workflow data
-        validator.validateWorkflowCreation(
-            namespace = parsedData.namespace,
-            id = parsedData.id,
-            name = parsedData.name,
-            description = parsedData.description,
-            steps = parsedData.steps,
-            yaml = yaml
-        )
+        parsedData.validate()
 
         // REQ-WF-002, REQ-WF-003, REQ-WF-005: Create revision with defaults
         val now = Instant.now()
@@ -82,6 +73,6 @@ class CreateWorkflowUseCase @Inject constructor(
         // REQ-WF-007: Persist with YAML source and return (repository stores YAML separately)
         val revisionWithSource = WorkflowRevisionWithSource.fromRevision(revision, yaml)
         val saved = repository.saveWithSource(revisionWithSource)
-        return saved.revision
+        return saved.toWorkflowRevisionID()
     }
 }

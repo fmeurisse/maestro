@@ -33,6 +33,13 @@ data class WorkflowRevision(
     val createdAt: Instant,
     val updatedAt: Instant
 ): IWorkflowRevisionID {
+
+    fun validate(): WorkflowRevision = this.apply {
+        validate(namespace, id, version, name, description)
+    }
+
+    fun toWorkflowRevisionID(): WorkflowRevisionID = WorkflowRevisionID(namespace, id, version)
+
     companion object {
         private val NAMESPACE_REGEX = Regex("^[a-zA-Z0-9_-]+$")
         private val ID_REGEX = Regex("^[a-zA-Z0-9_-]+$")
@@ -48,7 +55,7 @@ data class WorkflowRevision(
          * @throws InvalidWorkflowRevision if any validation rule is violated
          */
         @Throws(InvalidWorkflowRevision::class)
-        fun create(
+        fun validateAndCreate(
             namespace: String,
             id: String,
             version: Int,
@@ -60,13 +67,28 @@ data class WorkflowRevision(
             updatedAt: Instant = createdAt
         ): WorkflowRevision {
             validate(namespace, id, version, name, description)
-            return WorkflowRevision(
+            return create(
                 namespace, id, version, name, description,
                 steps, active, createdAt, updatedAt
             )
         }
 
-        private fun validate(
+        fun create(
+            namespace: String,
+            id: String,
+            version: Int,
+            name: String,
+            description: String,
+            steps: List<Step>,
+            active: Boolean = false,
+            createdAt: Instant = Instant.now(),
+            updatedAt: Instant = createdAt
+        ): WorkflowRevision = WorkflowRevision(
+            namespace, id, version, name, description,
+            steps, active, createdAt, updatedAt
+        )
+
+        fun validate(
             namespace: String,
             id: String,
             version: Int,

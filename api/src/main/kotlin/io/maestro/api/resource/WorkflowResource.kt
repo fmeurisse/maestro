@@ -4,12 +4,14 @@ import io.maestro.api.dto.WorkflowRevisionResponse
 import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.workflow.repository.IWorkflowRevisionRepository
 import io.maestro.core.usecase.CreateWorkflowUseCase
+import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.Response
 import org.jboss.logging.Logger
+import java.net.URI
 
 /**
  * REST resource for workflow management operations.
@@ -47,22 +49,14 @@ class WorkflowResource @Inject constructor(
         try {
             // Execute use case with raw YAML
             // The use case handles parsing, validation, and persistence
-            val created = createWorkflowUseCase.execute(yaml)
-
-            log.info("Successfully created workflow: ${created.namespace}/${created.id} v${created.version}")
-
-            // Fetch the workflow WITH its YAML source for the response
-            val revisionId = WorkflowRevisionID(created.namespace, created.id, created.version)
-            val withSource = repository.findByIdWithSource(revisionId)
-                ?: throw IllegalStateException("Failed to retrieve created workflow")
-
-            // Convert to response DTO
-            val response = withSource.toResponse()
+            val createdId: WorkflowRevisionID = createWorkflowUseCase.execute(yaml)
+            log.info("Successfully created workflow: $createdId")
 
             // Serialize to YAML and return 201 Created
-            val responseYaml = yamlParser.toYaml(response)
+            val responseYaml = yamlParser.toYaml(createdId)
 
             return Response.status(Response.Status.CREATED)
+                .location(URI.create("/api/workflows/${createdId.namespace}/${createdId.id}/${createdId.version}"))
                 .entity(responseYaml)
                 .build()
 
@@ -72,18 +66,4 @@ class WorkflowResource @Inject constructor(
         }
     }
 
-    /**
-     * Extension function to convert WorkflowRevisionWithSource to response DTO
-     */
-    private fun WorkflowRevisionWithSource.toResponse() = WorkflowRevisionResponse(
-        namespace = namespace,
-        id = id,
-        version = version,
-        name = name,
-        description = description,
-        active = active,
-        steps = steps,
-        createdAt = createdAt,
-        updatedAt = updatedAt
-    )
 }
