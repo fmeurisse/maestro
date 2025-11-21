@@ -13,8 +13,8 @@ import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.inject.Named
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jdbi.v3.core.Jdbi
-import org.jboss.logging.Logger
 
 /**
  * PostgreSQL implementation of IWorkflowRevisionRepository.
@@ -32,12 +32,12 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     @param:Named("jsonbObjectMapper") private val objectMapper: ObjectMapper
 ) : IWorkflowRevisionRepository {
 
-    private val log = Logger.getLogger(PostgresWorkflowRevisionRepository::class.java)
+    private val logger = KotlinLogging.logger {}
 
     // ===== Methods with YAML source (WorkflowRevisionWithSource) =====
 
     override fun saveWithSource(revision: WorkflowRevisionWithSource): WorkflowRevisionWithSource {
-        log.debug("Saving workflow revision with source: ${revision.revisionId()}")
+        logger.debug { "Saving workflow revision with source: ${revision.revisionId()}" }
 
         return jdbi.withHandle<WorkflowRevisionWithSource, Exception> { handle ->
             // Check if revision already exists
@@ -67,13 +67,13 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("revisionData", revisionJson)
                 .execute()
 
-            log.debug("Successfully saved workflow revision: ${revision.revisionId()}")
+            logger.debug { "Successfully saved workflow revision: ${revision.revisionId()}" }
             revision
         }
     }
 
     override fun updateWithSource(revision: WorkflowRevisionWithSource): WorkflowRevisionWithSource {
-        log.debug("Updating workflow revision with source: ${revision.revisionId()}")
+        logger.debug { "Updating workflow revision with source: ${revision.revisionId()}" }
 
         return jdbi.withHandle<WorkflowRevisionWithSource, Exception> { handle ->
             // Check if revision exists and is inactive
@@ -116,13 +116,13 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 throw WorkflowNotFoundException(revision.revisionId())
             }
 
-            log.debug("Successfully updated workflow revision: ${revision.revisionId()}")
+            logger.debug { "Successfully updated workflow revision: ${revision.revisionId()}" }
             revision
         }
     }
 
     override fun findByIdWithSource(id: WorkflowRevisionID): WorkflowRevisionWithSource? {
-        log.debug("Finding workflow revision with source: $id")
+        logger.debug { "Finding workflow revision with source: $id" }
 
         return jdbi.withHandle<WorkflowRevisionWithSource?, Exception> { handle ->
             handle.createQuery("""
@@ -147,7 +147,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     // ===== Methods without YAML source (WorkflowRevision) =====
 
     override fun findById(id: WorkflowRevisionID): WorkflowRevision? {
-        log.debug("Finding workflow revision: $id")
+        logger.debug { "Finding workflow revision: $id" }
 
         return jdbi.withHandle<WorkflowRevision?, Exception> { handle ->
             handle.createQuery("""
@@ -168,7 +168,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     }
 
     override fun findByWorkflowId(workflowId: WorkflowID): List<WorkflowRevision> {
-        log.debug("Finding all revisions for workflow: $workflowId")
+        logger.debug { "Finding all revisions for workflow: $workflowId" }
 
         return jdbi.withHandle<List<WorkflowRevision>, Exception> { handle ->
             handle.createQuery("""
@@ -188,7 +188,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     }
 
     override fun findActiveRevisions(workflowId: WorkflowID): List<WorkflowRevision> {
-        log.debug("Finding active revisions for workflow: $workflowId")
+        logger.debug { "Finding active revisions for workflow: $workflowId" }
 
         return jdbi.withHandle<List<WorkflowRevision>, Exception> { handle ->
             handle.createQuery("""
@@ -210,7 +210,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     // ===== Utility methods =====
 
     override fun findMaxVersion(workflowId: WorkflowID): Int? {
-        log.debug("Finding max version for workflow: $workflowId")
+        logger.debug { "Finding max version for workflow: $workflowId" }
 
         return jdbi.withHandle<Int?, Exception> { handle ->
             handle.createQuery("""
@@ -230,7 +230,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     }
 
     override fun exists(workflowId: WorkflowID): Boolean {
-        log.debug("Checking if workflow exists: $workflowId")
+        logger.debug { "Checking if workflow exists: $workflowId" }
 
         return jdbi.withHandle<Boolean, Exception> { handle ->
             val count = handle.createQuery("""
@@ -247,7 +247,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     }
 
     override fun deleteById(id: WorkflowRevisionID) {
-        log.debug("Deleting workflow revision: $id")
+        logger.debug { "Deleting workflow revision: $id" }
 
         jdbi.useHandle<Exception> { handle ->
             // Check if revision exists and is inactive
@@ -282,12 +282,12 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 throw WorkflowNotFoundException(id)
             }
 
-            log.debug("Successfully deleted workflow revision: $id")
+            logger.debug { "Successfully deleted workflow revision: $id" }
         }
     }
 
     override fun deleteByWorkflowId(workflowId: WorkflowID): Int {
-        log.debug("Deleting all revisions for workflow: $workflowId")
+        logger.debug { "Deleting all revisions for workflow: $workflowId" }
 
         return jdbi.withHandle<Int, Exception> { handle ->
             val rowsDeleted = handle.createUpdate("""
@@ -298,13 +298,13 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("id", workflowId.id)
                 .execute()
 
-            log.debug("Deleted $rowsDeleted revisions for workflow: $workflowId")
+            logger.debug { "Deleted $rowsDeleted revisions for workflow: $workflowId" }
             rowsDeleted
         }
     }
 
     override fun listWorkflows(namespace: String): List<WorkflowID> {
-        log.debug("Listing workflows in namespace: $namespace")
+        logger.debug { "Listing workflows in namespace: $namespace" }
 
         return jdbi.withHandle<List<WorkflowID>, Exception> { handle ->
             handle.createQuery("""
@@ -325,7 +325,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
     }
 
     override fun activate(id: WorkflowRevisionID): WorkflowRevision {
-        log.debug("Activating workflow revision: $id")
+        logger.debug { "Activating workflow revision: $id" }
 
         return jdbi.withHandle<WorkflowRevision, Exception> { handle ->
             // Get current revision within the same handle
@@ -358,13 +358,13 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("version", id.version)
                 .execute()
 
-            log.debug("Successfully activated workflow revision: $id")
+            logger.debug { "Successfully activated workflow revision: $id" }
             updatedRevision
         }
     }
 
     override fun deactivate(id: WorkflowRevisionID): WorkflowRevision {
-        log.debug("Deactivating workflow revision: $id")
+        logger.debug { "Deactivating workflow revision: $id" }
 
         return jdbi.withHandle<WorkflowRevision, Exception> { handle ->
             // Get current revision within the same handle
@@ -397,7 +397,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("version", id.version)
                 .execute()
 
-            log.debug("Successfully deactivated workflow revision: $id")
+            logger.debug { "Successfully deactivated workflow revision: $id" }
             updatedRevision
         }
     }

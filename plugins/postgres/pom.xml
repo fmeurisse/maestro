@@ -72,6 +72,12 @@
             <artifactId>jboss-logging</artifactId>
         </dependency>
 
+        <!-- Kotlin Logging -->
+        <dependency>
+            <groupId>io.github.oshai</groupId>
+            <artifactId>kotlin-logging-jvm</artifactId>
+        </dependency>
+
         <!-- CDI for dependency injection -->
         <dependency>
             <groupId>jakarta.enterprise</groupId>

@@ -6,6 +6,7 @@ import io.maestro.model.exception.MaestroException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
 import jakarta.ws.rs.ext.Provider
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.net.URI
 import java.time.Instant
 
@@ -47,9 +48,14 @@ data class ProblemDetail(
  */
 @Provider
 class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
+
+    private val logger = KotlinLogging.logger {}
+
     override fun toResponse(exception: MaestroException): Response {
         val statusCode = exception.status ?: Response.Status.BAD_REQUEST.statusCode
         val instanceUri = exception.instance?.let { str -> URI.create(str) }
+        
+        logger.debug { "Mapping MaestroException to Problem Detail: type=${exception.type}, status=$statusCode" }
         
         val problemDetail = ProblemDetail(
             type = URI.create(exception.type),
@@ -71,7 +77,12 @@ class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
  */
 @Provider
 class WorkflowAlreadyExistsExceptionMapper : ExceptionMapper<WorkflowAlreadyExistsException> {
+
+    private val logger = KotlinLogging.logger {}
+
     override fun toResponse(exception: WorkflowAlreadyExistsException): Response {
+        logger.warn { "Workflow already exists: ${exception.message}" }
+        
         val problemDetail = ProblemDetail(
             type = URI.create("/problems/workflow-already-exists"),
             title = "Workflow Already Exists",
@@ -91,7 +102,12 @@ class WorkflowAlreadyExistsExceptionMapper : ExceptionMapper<WorkflowAlreadyExis
  */
 @Provider
 class WorkflowNotFoundExceptionMapper : ExceptionMapper<WorkflowNotFoundException> {
+
+    private val logger = KotlinLogging.logger {}
+
     override fun toResponse(exception: WorkflowNotFoundException): Response {
+        logger.warn { "Workflow not found: ${exception.message}" }
+        
         val problemDetail = ProblemDetail(
             type = URI.create("/problems/workflow-not-found"),
             title = "Workflow Not Found",
@@ -111,7 +127,12 @@ class WorkflowNotFoundExceptionMapper : ExceptionMapper<WorkflowNotFoundExceptio
  */
 @Provider
 class GenericExceptionMapper : ExceptionMapper<Exception> {
+
+    private val logger = KotlinLogging.logger {}
+
     override fun toResponse(exception: Exception): Response {
+        logger.error(exception) { "Unhandled exception occurred: ${exception.message}" }
+        
         val problemDetail = ProblemDetail(
             type = URI.create("about:blank"),
             title = "Internal Server Error",

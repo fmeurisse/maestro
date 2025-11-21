@@ -12,6 +12,7 @@ import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.steps.Step
 import jakarta.enterprise.context.ApplicationScoped
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
  * Parser for YAML workflow definitions.
@@ -22,6 +23,8 @@ import jakarta.enterprise.context.ApplicationScoped
  */
 @ApplicationScoped
 class WorkflowYamlParser {
+
+    private val logger = KotlinLogging.logger {}
 
     private val yamlMapper = ObjectMapper(YAMLFactory().apply {
         disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
@@ -41,10 +44,14 @@ class WorkflowYamlParser {
      * @throws WorkflowRevisionParsingException if YAML is malformed or invalid
      */
     fun parseRevision(yaml: String): WorkflowRevision {
+        logger.debug { "Parsing YAML workflow revision" }
         try {
             // REQ-WF-056: Parse YAML into domain model
-            return yamlMapper.readValue<WorkflowRevision>(yaml).validate()
+            val revision = yamlMapper.readValue<WorkflowRevision>(yaml).validate()
+            logger.debug { "Successfully parsed workflow revision: ${revision.namespace}/${revision.id}/${revision.version}" }
+            return revision
         } catch (e: Exception) {
+            logger.error(e) { "Failed to parse YAML workflow revision: ${e.message}" }
             // REQ-WF-057: Reject malformed YAML with clear error
             throw WorkflowRevisionParsingException(
                 "Invalid YAML syntax: ${e.message}",
@@ -59,8 +66,14 @@ class WorkflowYamlParser {
      * @param revision Object to serialize
      * @return YAML string representation
      */
-    fun toYaml(revision: WorkflowRevision): String = yamlMapper.writeValueAsString(revision)
+    fun toYaml(revision: WorkflowRevision): String {
+        logger.debug { "Serializing workflow revision to YAML: ${revision.namespace}/${revision.id}/${revision.version}" }
+        return yamlMapper.writeValueAsString(revision)
+    }
 
-    fun toYaml(revisionID: WorkflowRevisionID): String = yamlMapper.writeValueAsString(revisionID)
+    fun toYaml(revisionID: WorkflowRevisionID): String {
+        logger.debug { "Serializing workflow revision ID to YAML: $revisionID" }
+        return yamlMapper.writeValueAsString(revisionID)
+    }
 
 }

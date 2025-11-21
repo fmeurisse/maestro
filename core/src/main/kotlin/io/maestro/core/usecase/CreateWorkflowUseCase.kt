@@ -9,6 +9,7 @@ import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.Instant
 
 /**
@@ -23,6 +24,8 @@ class CreateWorkflowUseCase @Inject constructor(
     private val repository: IWorkflowRevisionRepository,
     private val yamlParser: WorkflowYamlParser
 ) {
+
+    private val logger = KotlinLogging.logger {}
 
     /**
      * Executes the workflow creation use case.
@@ -42,18 +45,23 @@ class CreateWorkflowUseCase @Inject constructor(
      * @throws WorkflowRevisionParsingException if validation or parsing fails (REQ-WF-006)
      */
     fun execute(yaml: String): WorkflowRevisionID {
+        logger.info { "Executing workflow creation use case" }
+        
         // Parse YAML to extract workflow data
         val parsedData = yamlParser.parseRevision(yaml)
+        logger.debug { "Parsed workflow data: ${parsedData.namespace}/${parsedData.id}" }
 
         // REQ-WF-004: Validate uniqueness
         val workflowId = WorkflowID(parsedData.namespace, parsedData.id)
         if (repository.exists(workflowId)) {
+            logger.warn { "Workflow already exists: $workflowId" }
             throw WorkflowAlreadyExistsException(
                 WorkflowRevisionID(parsedData.namespace, parsedData.id, 1)
             )
         }
 
         // REQ-WF-006: Validate workflow data
+        logger.debug { "Validating workflow data" }
         parsedData.validate()
 
         // REQ-WF-002, REQ-WF-003, REQ-WF-005: Create revision with defaults
@@ -71,8 +79,10 @@ class CreateWorkflowUseCase @Inject constructor(
         )
 
         // REQ-WF-007: Persist with YAML source and return (repository stores YAML separately)
+        logger.debug { "Persisting workflow revision: ${revision.namespace}/${revision.id}/${revision.version}" }
         val revisionWithSource = WorkflowRevisionWithSource.fromRevision(revision, yaml)
         val saved = repository.saveWithSource(revisionWithSource)
+        logger.info { "Successfully created workflow revision: ${saved.toWorkflowRevisionID()}" }
         return saved.toWorkflowRevisionID()
     }
 }

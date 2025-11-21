@@ -48,6 +48,12 @@
             <artifactId>jakarta.inject-api</artifactId>
         </dependency>
 
+        <!-- Kotlin Logging -->
+        <dependency>
+            <groupId>io.github.oshai</groupId>
+            <artifactId>kotlin-logging-jvm</artifactId>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

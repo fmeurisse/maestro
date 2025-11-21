@@ -48,6 +48,7 @@
         <!-- Other dependencies -->
         <jboss-logging.version>3.5.3.Final</jboss-logging.version>
         <zalando-problem.version>0.27.1</zalando-problem.version>
+        <kotlin-logging.version>7.0.13</kotlin-logging.version>
 
         <!-- Test execution control -->
         <skipIntegTests>false</skipIntegTests>
@@ -276,6 +277,11 @@
                 <groupId>org.zalando</groupId>
                 <artifactId>jackson-datatype-problem</artifactId>
                 <version>${zalando-problem.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.oshai</groupId>
+                <artifactId>kotlin-logging-jvm</artifactId>
+                <version>${kotlin-logging.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -10,7 +10,7 @@ import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
 import jakarta.ws.rs.core.Response
-import org.jboss.logging.Logger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.net.URI
 
 /**
@@ -29,7 +29,7 @@ class WorkflowResource @Inject constructor(
     private val yamlParser: WorkflowYamlParser  // For serializing responses only
 ) {
 
-    private val log = Logger.getLogger(WorkflowResource::class.java)
+    private val logger = KotlinLogging.logger {}
 
     /**
      * Creates a new workflow with its first revision.
@@ -44,13 +44,13 @@ class WorkflowResource @Inject constructor(
      */
     @POST
     fun createWorkflow(yaml: String): Response {
-        log.info("Received workflow creation request")
+        logger.info { "Received workflow creation request" }
 
         try {
             // Execute use case with raw YAML
             // The use case handles parsing, validation, and persistence
             val createdId: WorkflowRevisionID = createWorkflowUseCase.execute(yaml)
-            log.info("Successfully created workflow: $createdId")
+            logger.info { "Successfully created workflow: $createdId" }
 
             // Serialize to YAML and return 201 Created
             val responseYaml = yamlParser.toYaml(createdId)
@@ -61,7 +61,7 @@ class WorkflowResource @Inject constructor(
                 .build()
 
         } catch (e: Exception) {
-            log.error("Failed to create workflow", e)
+            logger.error(e) { "Failed to create workflow: ${e.message}" }
             throw e // Let exception mapper handle it
         }
     }
