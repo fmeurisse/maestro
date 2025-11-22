@@ -43,7 +43,7 @@
 
 - [X] T007 [P] Create PostgreSQL schema DDL with dual storage design (plugins/postgres-repository/src/main/resources/schema/workflow_revisions.sql)
 - [X] T008 [P] Create migration script for dual storage schema (plugins/postgres-repository/src/main/resources/schema/V001__create_workflow_revisions.sql)
-- [X] T009 [P] Configure database connection properties in application.yml (api/src/main/resources/application.yml)
+- [X] T009 [P] Configure database connection properties in application.properties (api/src/main/resources/application.properties)
 
 **Dependencies**: T007 must complete before T008
 
@@ -280,7 +280,7 @@
 
 - [ ] T092 Create main App component with routing (ui/src/main/frontend/src/App.tsx)
 - [ ] T093 Configure frontend-maven-plugin npm build execution (ui/pom.xml)
-- [ ] T094 Configure Quarkus to serve static frontend assets (api/src/main/resources/application.yml)
+- [ ] T094 Configure Quarkus to serve static frontend assets (api/src/main/resources/application.properties)
 
 **Dependencies**: T083-T087 → T092, T006 → T093, T092 → T094
 
@@ -300,7 +300,7 @@
 
 ### Performance and Edge Cases
 
-- [ ] T098 Add database connection pooling configuration (api/src/main/resources/application.yml)
+- [ ] T098 Add database connection pooling configuration (api/src/main/resources/application.properties)
 - [ ] T099 Write integration test for concurrent revision creation (tests/integration/src/test/kotlin/io/maestro/integration/ConcurrencyIT.kt)
 - [ ] T100 Write integration test for deeply nested step validation (tests/integration/src/test/kotlin/io/maestro/integration/DeepNestingIT.kt)
 - [ ] T101 Write integration test for large workflow with 1000 revisions (tests/integration/src/test/kotlin/io/maestro/integration/LargeWorkflowIT.kt)

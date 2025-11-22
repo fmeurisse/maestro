@@ -21,7 +21,7 @@ import javax.sql.DataSource
  * - Kotlin plugin for Kotlin data class mapping
  * - Jackson ObjectMapper for JSONB serialization/deserialization
  * 
- * The DataSource is provided by the application (e.g., Quarkus from application.yml).
+ * The DataSource is provided by the application (e.g., Quarkus from application.properties).
  * This class uses CDI to inject the DataSource.
  */
 @ApplicationScoped

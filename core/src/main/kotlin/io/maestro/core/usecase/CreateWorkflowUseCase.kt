@@ -21,11 +21,17 @@ import java.time.Instant
  * Clean Architecture principles - single responsibility, framework-agnostic.
  */
 @ApplicationScoped
-class CreateWorkflowUseCase @Inject constructor(
+class CreateWorkflowUseCase constructor(
     private val repository: IWorkflowRevisionRepository,
     private val yamlParser: WorkflowYamlParser,
-    private val clock: Clock = Clock.systemUTC()
+    private val clock: Clock
 ) {
+
+    @Inject
+    constructor(
+        repository: IWorkflowRevisionRepository,
+        yamlParser: WorkflowYamlParser
+    ): this(repository, yamlParser, Clock.systemUTC())
 
     private val logger = KotlinLogging.logger {}
 

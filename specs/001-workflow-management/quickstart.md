@@ -318,8 +318,8 @@ npm run test:unit           # Cypress component tests
 # Check PostgreSQL is running
 pg_isready
 
-# Verify connection in application.yml
-cat api/src/main/resources/application.yml
+# Verify connection in application.properties
+cat api/src/main/resources/application.properties
 ```
 
 ### YAML Parsing Errors

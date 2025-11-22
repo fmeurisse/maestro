@@ -66,12 +66,6 @@
             <artifactId>kotlin-stdlib</artifactId>
         </dependency>
 
-        <!-- JBoss Logging -->
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging</artifactId>
-        </dependency>
-
         <!-- Kotlin Logging -->
         <dependency>
             <groupId>io.github.oshai</groupId>
@@ -136,6 +130,13 @@
             <artifactId>kotest-extensions-testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Liquibase for database migrations -->
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -169,6 +170,7 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>

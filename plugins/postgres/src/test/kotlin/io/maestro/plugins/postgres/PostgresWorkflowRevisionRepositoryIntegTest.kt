@@ -1,9 +1,5 @@
 package io.maestro.plugins.postgres
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FeatureSpec
 import io.kotest.extensions.testcontainers.perSpec
@@ -12,15 +8,22 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.maestro.core.WorkflowJsonParser
 import io.kotest.matchers.string.shouldContain as stringShouldContain
 import io.maestro.core.steps.LogTask
 import io.maestro.core.exception.ActiveRevisionConflictException
 import io.maestro.core.exception.WorkflowAlreadyExistsException
-import io.maestro.core.exception.WorkflowNotFoundException
+import io.maestro.core.exception.WorkflowRevisionNotFoundException
 import io.maestro.model.*
+import liquibase.command.CommandScope
+import liquibase.command.core.UpdateCommandStep
+import liquibase.database.DatabaseFactory
+import liquibase.database.jvm.JdbcConnection
+import liquibase.resource.ClassLoaderResourceAccessor
 import org.jdbi.v3.core.Jdbi
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.sql.DriverManager
 import java.time.Instant
 
 /**
@@ -48,7 +51,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
 
     // Setup variables
     lateinit var jdbi: Jdbi
-    lateinit var objectMapper: ObjectMapper
+    lateinit var jsonParser: WorkflowJsonParser
     lateinit var repository: PostgresWorkflowRevisionRepository
 
     beforeSpec {
@@ -59,27 +62,30 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             postgres.password
         )
 
-        // Configure ObjectMapper for JSONB serialization
-        objectMapper = ObjectMapper()
-            .registerKotlinModule()
-            .registerModule(JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        // Configure Json parser for JSONB serialization
+        jsonParser = WorkflowJsonParser()
 
-        // Register Step subtypes for polymorphic deserialization
-        objectMapper.registerSubtypes(LogTask::class.java)
-
-        // Create schema
-        jdbi.useHandle<Exception> { handle ->
-            val schema = this::class.java.getResourceAsStream("/schema/workflow_revisions.sql")
-                ?.bufferedReader()
-                ?.use { it.readText() }
-                ?: throw IllegalStateException("Schema file not found")
-
-            handle.createScript(schema).execute()
+        // Run Liquibase migrations using CommandScope API
+        val connection = DriverManager.getConnection(
+            postgres.jdbcUrl,
+            postgres.username,
+            postgres.password
+        )
+        try {
+            val database = DatabaseFactory.getInstance()
+                .findCorrectDatabaseImplementation(JdbcConnection(connection))
+            
+            val commandScope = CommandScope("update")
+            commandScope.addArgumentValue(UpdateCommandStep.CHANGELOG_FILE_ARG.getName(), "db/changelog/db.changelog-master.xml")
+            commandScope.addArgumentValue("database", database)
+            commandScope.addArgumentValue("resourceAccessor", ClassLoaderResourceAccessor())
+            commandScope.execute()
+        } finally {
+            connection.close()
         }
 
         // Create repository instance
-        repository = PostgresWorkflowRevisionRepository(jdbi, objectMapper)
+        repository = PostgresWorkflowRevisionRepository(jdbi, jsonParser)
     }
 
     beforeEach {
@@ -227,7 +233,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             val revision = createTestRevisionWithSource()
 
             // When/Then
-            shouldThrow<WorkflowNotFoundException> {
+            shouldThrow<WorkflowRevisionNotFoundException> {
                 repository.updateWithSource(revision)
             }
         }
@@ -469,7 +475,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             val id = WorkflowRevisionID("test-ns", "non-existent", 1)
 
             // When/Then
-            shouldThrow<WorkflowNotFoundException> {
+            shouldThrow<WorkflowRevisionNotFoundException> {
                 repository.deleteById(id)
             }
         }
@@ -557,7 +563,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             val id = WorkflowRevisionID("test-ns", "non-existent", 1)
 
             // When/Then
-            shouldThrow<WorkflowNotFoundException> {
+            shouldThrow<WorkflowRevisionNotFoundException> {
                 repository.activate(id)
             }
         }
@@ -618,7 +624,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             val id = WorkflowRevisionID("test-ns", "non-existent", 1)
 
             // When/Then
-            shouldThrow<WorkflowNotFoundException> {
+            shouldThrow<WorkflowRevisionNotFoundException> {
                 repository.deactivate(id)
             }
         }

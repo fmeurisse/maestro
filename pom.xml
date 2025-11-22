@@ -41,13 +41,14 @@
         <!-- Database dependencies -->
         <postgresql.version>42.7.1</postgresql.version>
         <jdbi.version>3.45.1</jdbi.version>
+        <liquibase.version>4.27.0</liquibase.version>
+        <liquibase-maven-plugin.version>4.27.0</liquibase-maven-plugin.version>
 
         <!-- Jakarta dependencies -->
         <jakarta.enterprise.cdi-api.version>4.0.1</jakarta.enterprise.cdi-api.version>
         <jakarta.inject-api.version>2.0.1</jakarta.inject-api.version>
 
         <!-- Other dependencies -->
-        <jboss-logging.version>3.5.3.Final</jboss-logging.version>
         <zalando-problem.version>0.27.1</zalando-problem.version>
         <kotlin-logging.version>7.0.13</kotlin-logging.version>
         <slf4j.version>2.0.13</slf4j.version>
@@ -124,6 +125,8 @@
                                 <excludes>
                                     <exclude>**/*IntegTest.java</exclude>
                                     <exclude>**/*IntegTest.kt</exclude>
+                                    <exclude>**/*ContractTest.java</exclude>
+                                    <exclude>**/*ContractTest.kt</exclude>
                                 </excludes>
                                 <skipTests>${skipTests}</skipTests>
                             </configuration>
@@ -140,6 +143,8 @@
                                 <includes>
                                     <include>**/*IntegTest.java</include>
                                     <include>**/*IntegTest.kt</include>
+                                    <include>**/*ContractTest.java</include>
+                                    <include>**/*ContractTest.kt</include>
                                 </includes>
                                 <excludes>
                                     <exclude>**/*UnitTest.java</exclude>
@@ -256,6 +261,11 @@
                 <artifactId>jdbi3-postgres</artifactId>
                 <version>${jdbi.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.liquibase</groupId>
+                <artifactId>liquibase-core</artifactId>
+                <version>${liquibase.version}</version>
+            </dependency>
 
             <!-- Jakarta dependencies -->
             <dependency>
@@ -270,11 +280,6 @@
             </dependency>
 
             <!-- Other dependencies -->
-            <dependency>
-                <groupId>org.jboss.logging</groupId>
-                <artifactId>jboss-logging</artifactId>
-                <version>${jboss-logging.version}</version>
-            </dependency>
             <dependency>
                 <groupId>org.zalando</groupId>
                 <artifactId>problem</artifactId>

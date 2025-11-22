@@ -19,17 +19,6 @@ sealed class WorkflowException(
     val status: Int
 ) : RuntimeException(message, cause)
 
-/**
- * Thrown when a workflow revision cannot be found.
- * Maps to 404 Not Found.
- */
-class WorkflowNotFoundException(id: WorkflowRevisionID) :
-    WorkflowException(
-        message = "Workflow revision not found: $id",
-        problemType = URI.create("https://maestro.io/problems/workflow-not-found"),
-        status = 404
-    )
-
 
 /**
  * Thrown when attempting to modify or delete an active revision.

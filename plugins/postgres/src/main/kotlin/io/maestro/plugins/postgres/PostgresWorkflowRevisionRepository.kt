@@ -1,10 +1,9 @@
 package io.maestro.plugins.postgres
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import io.maestro.core.WorkflowJsonParser
 import io.maestro.core.exception.ActiveRevisionConflictException
 import io.maestro.core.exception.WorkflowAlreadyExistsException
-import io.maestro.core.exception.WorkflowNotFoundException
+import io.maestro.core.exception.WorkflowRevisionNotFoundException
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevision
@@ -12,7 +11,6 @@ import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
-import jakarta.inject.Named
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jdbi.v3.core.Jdbi
 
@@ -29,7 +27,7 @@ import org.jdbi.v3.core.Jdbi
 @ApplicationScoped
 class PostgresWorkflowRevisionRepository @Inject constructor(
     private val jdbi: Jdbi,
-    @param:Named("jsonbObjectMapper") private val objectMapper: ObjectMapper
+    private val jsonParser: WorkflowJsonParser
 ) : IWorkflowRevisionRepository {
 
     private val logger = KotlinLogging.logger {}
@@ -56,7 +54,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
             }
 
             // Serialize WorkflowRevision (without yamlSource) to JSONB
-            val revisionJson = objectMapper.writeValueAsString(revision.revision)
+            val revisionJson = jsonParser.toJson(revision.revision)
 
             // Insert with dual storage
             handle.createUpdate("""
@@ -89,14 +87,14 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .orElse(null)
 
             if (current == null) {
-                throw WorkflowNotFoundException(revision.revisionId())
+                throw WorkflowRevisionNotFoundException(revision.revisionId())
             }
             if (current) {
                 throw ActiveRevisionConflictException(revision.revisionId(), "update")
             }
 
             // Serialize updated WorkflowRevision to JSONB
-            val revisionJson = objectMapper.writeValueAsString(revision.revision)
+            val revisionJson = jsonParser.toJson(revision.revision)
 
             // Update with dual storage
             val rowsUpdated = handle.createUpdate("""
@@ -113,7 +111,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .execute()
 
             if (rowsUpdated == 0) {
-                throw WorkflowNotFoundException(revision.revisionId())
+                throw WorkflowRevisionNotFoundException(revision.revisionId())
             }
 
             logger.debug { "Successfully updated workflow revision: ${revision.revisionId()}" }
@@ -136,7 +134,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .map { rs, _ ->
                     val yamlSource = rs.getString("yaml_source")
                     val revisionJson = rs.getString("revision_data")
-                    val revision = objectMapper.readValue<WorkflowRevision>(revisionJson)
+                    val revision = jsonParser.parseRevision(revisionJson, validate = false)
                     WorkflowRevisionWithSource.fromRevision(revision, yamlSource)
                 }
                 .findFirst()
@@ -160,7 +158,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("version", id.version)
                 .map { rs, _ ->
                     val revisionJson = rs.getString("revision_data")
-                    objectMapper.readValue<WorkflowRevision>(revisionJson)
+                    jsonParser.parseRevision(revisionJson, validate = false)
                 }
                 .findFirst()
                 .orElse(null)
@@ -181,7 +179,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("id", workflowId.id)
                 .map { rs, _ ->
                     val revisionJson = rs.getString("revision_data")
-                    objectMapper.readValue<WorkflowRevision>(revisionJson)
+                    jsonParser.parseRevision(revisionJson, validate = false)
                 }
                 .list()
         }
@@ -201,7 +199,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("id", workflowId.id)
                 .map { rs, _ ->
                     val revisionJson = rs.getString("revision_data")
-                    objectMapper.readValue<WorkflowRevision>(revisionJson)
+                    jsonParser.parseRevision(revisionJson, validate = false)
                 }
                 .list()
         }
@@ -221,8 +219,11 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("namespace", workflowId.namespace)
                 .bind("id", workflowId.id)
                 .map { rs, _ ->
-                    val version = rs.getObject("max_version", java.lang.Long::class.java)
-                    version?.toInt()
+                    val version = rs.getObject("max_version")
+                    when (version) {
+                        is Number -> version.toInt()
+                        else -> null
+                    }
                 }
                 .findFirst()
                 .orElse(null)
@@ -263,7 +264,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .orElse(null)
 
             if (current == null) {
-                throw WorkflowNotFoundException(id)
+                throw WorkflowRevisionNotFoundException(id)
             }
             if (current) {
                 throw ActiveRevisionConflictException(id, "delete")
@@ -279,7 +280,7 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .execute()
 
             if (rowsDeleted == 0) {
-                throw WorkflowNotFoundException(id)
+                throw WorkflowRevisionNotFoundException(id)
             }
 
             logger.debug { "Successfully deleted workflow revision: $id" }
@@ -339,13 +340,13 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("version", id.version)
                 .map { rs, _ -> rs.getString("revision_data") }
                 .findFirst()
-                .orElse(null) ?: throw WorkflowNotFoundException(id)
+                .orElse(null) ?: throw WorkflowRevisionNotFoundException(id)
 
-            val current = objectMapper.readValue<WorkflowRevision>(currentJson)
+            val current = jsonParser.parseRevision(currentJson, validate = false)
 
             // Update active flag
             val updatedRevision = current.activate()
-            val revisionJson = objectMapper.writeValueAsString(updatedRevision)
+            val revisionJson = jsonParser.toJson(updatedRevision)
 
             handle.createUpdate("""
                 UPDATE workflow_revisions
@@ -378,13 +379,13 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 .bind("version", id.version)
                 .map { rs, _ -> rs.getString("revision_data") }
                 .findFirst()
-                .orElse(null) ?: throw WorkflowNotFoundException(id)
+                .orElse(null) ?: throw WorkflowRevisionNotFoundException(id)
 
-            val current = objectMapper.readValue<WorkflowRevision>(currentJson)
+            val current = jsonParser.parseRevision(currentJson, validate = false)
 
             // Update active flag
             val updatedRevision = current.deactivate()
-            val revisionJson = objectMapper.writeValueAsString(updatedRevision)
+            val revisionJson = jsonParser.toJson(updatedRevision)
 
             handle.createUpdate("""
                 UPDATE workflow_revisions

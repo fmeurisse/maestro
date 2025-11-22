@@ -68,7 +68,7 @@ Aligns with constitutional principle with modification: inactive revisions are u
 ✅ **PASS**: Implementation uses constitutional stack:
 - Kotlin 2.2.0+ for all backend modules
 - Maven multi-module build
-- Quarkus 3.29.3+ (quarkus-rest, quarkus-arc, quarkus-kotlin, quarkus-config-yaml)
+- Quarkus 3.29.3+ (quarkus-rest, quarkus-arc, quarkus-kotlin)
 - Jackson for YAML/JSON (jackson-dataformat-yaml, jackson-module-kotlin)
 - UTF-8 encoding
 - Java 21 JVM runtime
