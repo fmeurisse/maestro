@@ -1,4 +1,4 @@
-package io.maestro.api.exception
+package io.maestro.api
 
 import io.maestro.model.exception.MaestroException
 import jakarta.ws.rs.core.Response
@@ -41,6 +41,7 @@ data class ProblemDetail(
  * - InvalidWorkflowRevision (400)
  * - WorkflowRevisionParsingException (400)
  * - WorkflowAlreadyExistsException (409)
+ * - WorkflowRevisionNotFoundException (404)
  * 
  * The exception's type, title, status, and message are used directly from the exception,
  * ensuring consistency with the RFC 7807 Problem Details format.
@@ -74,6 +75,32 @@ class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
 
 
 /**
+ * Exception mapper for JAX-RS NotSupportedException (unsupported media type).
+ * Returns 415 Unsupported Media Type when client sends wrong Content-Type.
+ */
+@Provider
+class NotSupportedExceptionMapper : ExceptionMapper<jakarta.ws.rs.NotSupportedException> {
+
+    private val logger = KotlinLogging.logger {}
+
+    override fun toResponse(exception: jakarta.ws.rs.NotSupportedException): Response {
+        logger.debug { "Unsupported media type: ${exception.message}" }
+
+        val problemDetail = ProblemDetail(
+            type = URI.create("about:blank"),
+            title = "Unsupported Media Type",
+            status = 415,
+            detail = "The media type of the request is not supported"
+        )
+
+        return Response.status(Response.Status.UNSUPPORTED_MEDIA_TYPE)
+            .entity(problemDetail)
+            .type("application/problem+json")
+            .build()
+    }
+}
+
+/**
  * Generic exception mapper for unhandled exceptions
  */
 @Provider
@@ -83,7 +110,7 @@ class GenericExceptionMapper : ExceptionMapper<Exception> {
 
     override fun toResponse(exception: Exception): Response {
         logger.error(exception) { "Unhandled exception occurred: ${exception.message}" }
-        
+
         val problemDetail = ProblemDetail(
             type = URI.create("about:blank"),
             title = "Internal Server Error",

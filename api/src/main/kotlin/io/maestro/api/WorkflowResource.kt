@@ -1,16 +1,16 @@
-package io.maestro.api.resource
+package io.maestro.api
 
-import io.maestro.api.dto.WorkflowRevisionResponse
-import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.IWorkflowRevisionRepository
-import io.maestro.core.usecase.CreateWorkflowUseCase
-import io.maestro.model.WorkflowRevision
-import io.maestro.model.WorkflowRevisionID
-import io.maestro.model.WorkflowRevisionWithSource
-import jakarta.inject.Inject
-import jakarta.ws.rs.*
-import jakarta.ws.rs.core.Response
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.maestro.core.IWorkflowRevisionRepository
+import io.maestro.core.WorkflowYamlParser
+import io.maestro.core.usecase.CreateWorkflowUseCase
+import io.maestro.model.WorkflowRevisionID
+import jakarta.inject.Inject
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.Response
 import java.net.URI
 
 /**
@@ -21,11 +21,8 @@ import java.net.URI
  * to use case executions following Clean Architecture principles.
  */
 @Path("/api/workflows")
-@Produces("application/x-yaml")
-@Consumes("application/x-yaml")
 class WorkflowResource @Inject constructor(
     private val createWorkflowUseCase: CreateWorkflowUseCase,
-    private val repository: IWorkflowRevisionRepository,
     private val yamlParser: WorkflowYamlParser  // For serializing responses only
 ) {
 
@@ -35,7 +32,7 @@ class WorkflowResource @Inject constructor(
      * Creates a new workflow with its first revision.
      *
      * Endpoint: POST /api/workflows
-     * Content-Type: application/x-yaml
+     * Content-Type: application/yaml
      *
      * Implements API Contract 4.1.1 and requirements REQ-WF-001 through REQ-WF-007.
      *
@@ -43,6 +40,8 @@ class WorkflowResource @Inject constructor(
      * @return 201 Created with workflow revision, or error response
      */
     @POST
+    @Produces("application/yaml", "application/x-yaml")
+    @Consumes("application/yaml", "application/x-yaml")
     fun createWorkflow(yaml: String): Response {
         logger.info { "Received workflow creation request" }
 
