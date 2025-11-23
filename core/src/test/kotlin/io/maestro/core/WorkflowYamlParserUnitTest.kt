@@ -70,7 +70,7 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 description: A workflow with sequence
                 steps:
                   - type: Sequence
-                    tasks:
+                    steps:
                     - type: LogTask
                       message: First task
                     - type: LogTask
@@ -86,9 +86,9 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
             // Then
             revision.steps.size shouldBe 1
             val sequence = revision.steps[0] as Sequence
-            sequence.tasks.size shouldBe 2
-            sequence.tasks[0] shouldBe LogTask("First task")
-            sequence.tasks[1] shouldBe LogTask("Second task")
+            sequence.steps.size shouldBe 2
+            sequence.steps[0] shouldBe LogTask("First task")
+            sequence.steps[1] shouldBe LogTask("Second task")
         }
 
         scenario("should parse workflow with If step") {
@@ -135,11 +135,11 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 description: A workflow with nested sequences
                 steps:
                   - type: Sequence
-                    tasks:
+                    steps:
                       - type: LogTask
                         message: Before nested
                       - type: Sequence
-                        tasks:
+                        steps:
                           - type: LogTask
                             message: Nested task 1
                           - type: LogTask
@@ -157,14 +157,14 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
             // Then
             revision.steps.size shouldBe 1
             val outerSequence = revision.steps[0] as Sequence
-            outerSequence.tasks.size shouldBe 3
-            outerSequence.tasks[0] shouldBe LogTask("Before nested")
-            outerSequence.tasks[2] shouldBe LogTask("After nested")
+            outerSequence.steps.size shouldBe 3
+            outerSequence.steps[0] shouldBe LogTask("Before nested")
+            outerSequence.steps[2] shouldBe LogTask("After nested")
             
-            val innerSequence = outerSequence.tasks[1] as Sequence
-            innerSequence.tasks.size shouldBe 2
-            innerSequence.tasks[0] shouldBe LogTask("Nested task 1")
-            innerSequence.tasks[1] shouldBe LogTask("Nested task 2")
+            val innerSequence = outerSequence.steps[1] as Sequence
+            innerSequence.steps.size shouldBe 2
+            innerSequence.steps[0] shouldBe LogTask("Nested task 1")
+            innerSequence.steps[1] shouldBe LogTask("Nested task 2")
         }
 
         scenario("should parse workflow with default values") {
@@ -393,7 +393,7 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 description = "A workflow with sequence",
                 steps = listOf(
                     Sequence(
-                        tasks = listOf(
+                        steps = listOf(
                             LogTask("First task"),
                             LogTask("Second task")
                         )
@@ -460,11 +460,11 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 description: Testing nested round-trip
                 steps:
                   - type: Sequence
-                    tasks:
+                    steps:
                     - type: LogTask
                       message: Task 1
                     - type: Sequence
-                      tasks:
+                      steps:
                         - type: LogTask
                           message: Nested task
                     - type: LogTask
@@ -483,7 +483,7 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
             roundTripRevision.steps.size shouldBe revision.steps.size
             val originalSequence = revision.steps[0] as Sequence
             val roundTripSequence = roundTripRevision.steps[0] as Sequence
-            roundTripSequence.tasks.size shouldBe originalSequence.tasks.size
+            roundTripSequence.steps.size shouldBe originalSequence.steps.size
         }
     }
 })
