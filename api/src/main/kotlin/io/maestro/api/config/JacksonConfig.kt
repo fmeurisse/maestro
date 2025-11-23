@@ -6,14 +6,17 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.steps.StepTypeRegistry
 import io.maestro.core.steps.If
 import io.maestro.core.steps.LogTask
 import io.maestro.core.steps.Sequence
+import io.quarkus.arc.DefaultBean
+import io.quarkus.jackson.ObjectMapperCustomizer
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Produces
+import jakarta.inject.Named
 import jakarta.inject.Singleton
-import org.jboss.logging.Logger
 
 /**
  * Jackson ObjectMapper configuration for YAML/JSON serialization.
@@ -34,62 +37,31 @@ import org.jboss.logging.Logger
 @ApplicationScoped
 class JacksonConfig {
 
-    private val log = Logger.getLogger(JacksonConfig::class.java)
+    private val log = KotlinLogging.logger {}
+
+    // Note: YAML ObjectMapper is created internally by WorkflowYamlParser in the core module,
+    // so we don't need to produce it as a CDI bean here. This avoids ambiguous dependency issues.
 
     /**
-     * Produces a configured ObjectMapper for YAML serialization.
-     * 
-     * The mapper is configured with:
-     * - Kotlin module for data class support
-     * - JavaTimeModule for Instant serialization
-     * - YAML factory with proper formatting
-     * - Runtime-registered step types for polymorphism
+     * Customizes the default ObjectMapper for JSON serialization used by Quarkus REST.
+     * This approach avoids ambiguous dependency issues by customizing Quarkus's default mapper
+     * rather than producing a competing bean.
      */
-    @Produces
     @Singleton
-    fun yamlObjectMapper(): ObjectMapper {
-        val mapper = ObjectMapper(
-            YAMLFactory().apply {
-                disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
-                enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-                enable(YAMLGenerator.Feature.INDENT_ARRAYS)
-            }
-        )
-            .registerModule(kotlinModule())
-            .registerModule(JavaTimeModule())
+    fun jsonObjectMapperCustomizer(): ObjectMapperCustomizer {
+        return ObjectMapperCustomizer { mapper ->
+            // Register Kotlin and JSR310 modules
+            mapper.registerModule(kotlinModule())
+            mapper.registerModule(JavaTimeModule())
 
-        // Register core step types
-        registerCoreStepTypes(mapper)
+            // Register core step types
+            registerCoreStepTypes(mapper)
 
-        // Discover and register plugin step types
-        val pluginTypeCount = registerPluginStepTypes(mapper)
+            // Discover and register plugin step types
+            val pluginTypeCount = registerPluginStepTypes(mapper)
 
-        log.info("Jackson ObjectMapper (YAML) configured with step types (core + $pluginTypeCount plugin types)")
-
-
-        return mapper
-    }
-
-    /**
-     * Produces a configured ObjectMapper for JSON serialization.
-     * Same configuration as YAML mapper but without YAML factory.
-     */
-    @Produces
-    @Singleton
-    fun jsonObjectMapper(): ObjectMapper {
-        val mapper = ObjectMapper()
-            .registerModule(kotlinModule())
-            .registerModule(JavaTimeModule())
-
-        // Register core step types
-        registerCoreStepTypes(mapper)
-
-        // Discover and register plugin step types
-        val pluginTypeCount = registerPluginStepTypes(mapper)
-
-        log.info("Jackson ObjectMapper (JSON) configured with step types (core + $pluginTypeCount plugin types)")
-
-        return mapper
+            log.info("Jackson ObjectMapper (JSON) configured with step types (core + $pluginTypeCount plugin types)")
+        }
     }
 
     /**
