@@ -65,14 +65,14 @@ class CreateWorkflowUseCaseUnitTest : FeatureSpec({
             every { repository.exists(workflowId) } returns false
             every { repository.saveWithSource(any()) } answers {
                 capturedRevision = args[0] as WorkflowRevisionWithSource
-                WorkflowRevisionWithSource.fromRevision(capturedRevision.revision, yaml)
+                capturedRevision
             }
 
             // When
             val result = useCase.execute(yaml)
 
             // Then
-            result shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
+            result.toWorkflowRevisionID() shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
             
             // Verify timestamps are set to the fixed Clock time when passed to saveWithSource
             capturedRevision.shouldNotBeNull()
@@ -113,14 +113,14 @@ class CreateWorkflowUseCaseUnitTest : FeatureSpec({
             every { repository.exists(workflowId) } returns false
             every { repository.saveWithSource(any()) } answers {
                 capturedRevision = args[0] as WorkflowRevisionWithSource
-                WorkflowRevisionWithSource.fromRevision(capturedRevision.revision, yaml)
+                capturedRevision
             }
 
             // When
             val result = useCase.execute(yaml)
 
             // Then
-            result shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
+            result.toWorkflowRevisionID() shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
             
             // Verify saved revision
             capturedRevision.shouldNotBeNull()
@@ -154,14 +154,14 @@ class CreateWorkflowUseCaseUnitTest : FeatureSpec({
             every { repository.exists(workflowId) } returns false
             every { repository.saveWithSource(any()) } answers {
                 capturedRevision = args[0] as WorkflowRevisionWithSource
-                WorkflowRevisionWithSource.fromRevision(capturedRevision.revision, yaml)
+                capturedRevision
             }
 
             // When
             val result = useCase.execute(yaml)
 
             // Then - Verify that timestamps are set to fixed Clock time
-            result shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
+            result.toWorkflowRevisionID() shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
             
             capturedRevision.shouldNotBeNull()
             capturedRevision.createdAt shouldBe expectedTimestamp
@@ -191,14 +191,14 @@ class CreateWorkflowUseCaseUnitTest : FeatureSpec({
             every { repository.exists(workflowId) } returns false
             every { repository.saveWithSource(any()) } answers {
                 capturedRevision = args[0] as WorkflowRevisionWithSource
-                WorkflowRevisionWithSource.fromRevision(capturedRevision.revision, yaml)
+                capturedRevision
             }
 
             // When
             val result = useCase.execute(yaml)
 
             // Then
-            result shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
+            result.toWorkflowRevisionID() shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
             
             capturedRevision.shouldNotBeNull()
             capturedRevision.active shouldBe true // Active flag preserved from YAML
@@ -260,14 +260,14 @@ class CreateWorkflowUseCaseUnitTest : FeatureSpec({
             every { repository.exists(workflowId) } returns false
             every { repository.saveWithSource(any()) } answers {
                 capturedRevision = args[0] as WorkflowRevisionWithSource
-                WorkflowRevisionWithSource.fromRevision(capturedRevision.revision, yaml)
+                capturedRevision
             }
 
             // When
             val result = useCase.execute(yaml)
 
             // Then - Verify order: exists -> save (parsing happens before exists check)
-            result shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
+            result.toWorkflowRevisionID() shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
             
             capturedRevision.shouldNotBeNull()
             capturedRevision.createdAt shouldBe expectedTimestamp
@@ -321,20 +321,23 @@ class CreateWorkflowUseCaseUnitTest : FeatureSpec({
             every { repository.exists(workflowId) } returns false
             every { repository.saveWithSource(any()) } answers {
                 capturedRevision = args[0] as WorkflowRevisionWithSource
-                WorkflowRevisionWithSource.fromRevision(capturedRevision.revision, yaml)
+                capturedRevision
             }
 
             // When
             val result = useCase.execute(yaml)
 
             // Then
-            result shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
+            result.toWorkflowRevisionID() shouldBe WorkflowRevisionID("test-ns", "workflow-1", 1)
             
             capturedRevision.shouldNotBeNull()
             capturedRevision.namespace shouldBe "test-ns"
             capturedRevision.id shouldBe "workflow-1"
             capturedRevision.version shouldBe 1
-            capturedRevision.yamlSource shouldBe yaml // Verify YAML source is preserved
+            capturedRevision.yamlSource.shouldNotBeNull() // YAML source should contain updated metadata
+            capturedRevision.yamlSource shouldContain "version: 1"
+            capturedRevision.yamlSource shouldContain "createdAt:"
+            capturedRevision.yamlSource shouldContain "updatedAt:"
             capturedRevision.createdAt shouldBe expectedTimestamp
             capturedRevision.updatedAt shouldBe expectedTimestamp
             capturedRevision.createdAt shouldBe capturedRevision.updatedAt

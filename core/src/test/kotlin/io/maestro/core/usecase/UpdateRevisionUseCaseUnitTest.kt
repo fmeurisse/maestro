@@ -3,6 +3,7 @@ package io.maestro.core.usecase
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FeatureSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.errors.ActiveRevisionConflictException
@@ -95,7 +96,10 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
             capturedUpdate.active shouldBe false  // Preserved
             capturedUpdate.createdAt shouldBe Instant.parse("2024-01-01T10:00:00Z")  // Immutable
             capturedUpdate.updatedAt shouldBe fixedInstant  // Updated
-            capturedUpdate.yamlSource shouldBe newYaml
+            // YAML source should contain updated metadata
+            capturedUpdate.yamlSource shouldContain "version: 1"
+            capturedUpdate.yamlSource shouldContain "createdAt:"
+            capturedUpdate.yamlSource shouldContain "updatedAt:"
 
             verify(exactly = 1) { repository.findById(revisionId) }
             verify(exactly = 1) { yamlParser.parseRevision(newYaml, true) }
@@ -399,7 +403,7 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
             val result = useCase.execute(revisionId, newYaml)
 
             // Then
-            result shouldBe revisionId
+            result.toWorkflowRevisionID() shouldBe revisionId
             verify(exactly = 1) { repository.findById(revisionId) }
             verify(exactly = 1) { yamlParser.parseRevision(newYaml, true) }
             verify(exactly = 1) { repository.updateWithSource(any()) }

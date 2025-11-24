@@ -59,15 +59,13 @@ class WorkflowResource @Inject constructor(
         try {
             // Execute use case with raw YAML
             // The use case handles parsing, validation, and persistence
-            val createdId: WorkflowRevisionID = createWorkflowUseCase.execute(yaml)
-            logger.info { "Successfully created workflow: $createdId" }
+            val created = createWorkflowUseCase.execute(yaml)
+            logger.info { "Successfully created workflow: ${created.toWorkflowRevisionID()}" }
 
-            // Serialize to YAML and return 201 Created
-            val responseYaml = yamlParser.toYaml(createdId)
-
+            // Return the updated YAML source with metadata
             return Response.status(Response.Status.CREATED)
-                .location(URI.create("/api/workflows/${createdId.namespace}/${createdId.id}/${createdId.version}"))
-                .entity(responseYaml)
+                .location(URI.create("/api/workflows/${created.namespace}/${created.id}/${created.version}"))
+                .entity(created.yamlSource)
                 .build()
 
         } catch (e: Exception) {
@@ -102,15 +100,13 @@ class WorkflowResource @Inject constructor(
 
         try {
             // Execute use case with namespace, id, and raw YAML
-            val createdId: WorkflowRevisionID = createRevisionUseCase.execute(namespace, id, yaml)
-            logger.info { "Successfully created revision: $createdId" }
+            val created = createRevisionUseCase.execute(namespace, id, yaml)
+            logger.info { "Successfully created revision: ${created.toWorkflowRevisionID()}" }
 
-            // Serialize to YAML and return 201 Created
-            val responseYaml = yamlParser.toYaml(createdId)
-
+            // Return the updated YAML source with metadata
             return Response.status(Response.Status.CREATED)
-                .location(URI.create("/api/workflows/${createdId.namespace}/${createdId.id}/${createdId.version}"))
-                .entity(responseYaml)
+                .location(URI.create("/api/workflows/${created.namespace}/${created.id}/${created.version}"))
+                .entity(created.yamlSource)
                 .build()
 
         } catch (e: Exception) {
@@ -248,11 +244,8 @@ class WorkflowResource @Inject constructor(
             val activated = activateRevisionUseCase.execute(namespace, id, version)
             logger.info { "Successfully activated revision: $namespace/$id/$version" }
 
-            // Serialize to YAML and return 200 OK
-            val revisionId = WorkflowRevisionID(activated.namespace, activated.id, activated.version)
-            val responseYaml = yamlParser.toYaml(revisionId)
-
-            return Response.ok(responseYaml).build()
+            // Return the updated YAML source with metadata
+            return Response.ok(activated.yamlSource).build()
 
         } catch (e: Exception) {
             logger.error(e) { "Failed to activate revision: ${e.message}" }
@@ -287,11 +280,8 @@ class WorkflowResource @Inject constructor(
             val deactivated = deactivateRevisionUseCase.execute(namespace, id, version)
             logger.info { "Successfully deactivated revision: $namespace/$id/$version" }
 
-            // Serialize to YAML and return 200 OK
-            val revisionId = WorkflowRevisionID(deactivated.namespace, deactivated.id, deactivated.version)
-            val responseYaml = yamlParser.toYaml(revisionId)
-
-            return Response.ok(responseYaml).build()
+            // Return the updated YAML source with metadata
+            return Response.ok(deactivated.yamlSource).build()
 
         } catch (e: Exception) {
             logger.error(e) { "Failed to deactivate revision: ${e.message}" }
@@ -327,13 +317,11 @@ class WorkflowResource @Inject constructor(
 
         try {
             // Execute update use case with raw YAML
-            val updatedId: WorkflowRevisionID = updateRevisionUseCase.execute(namespace, id, version, yaml)
-            logger.info { "Successfully updated revision: $updatedId" }
+            val updated = updateRevisionUseCase.execute(namespace, id, version, yaml)
+            logger.info { "Successfully updated revision: ${updated.toWorkflowRevisionID()}" }
 
-            // Serialize to YAML and return 200 OK
-            val responseYaml = yamlParser.toYaml(updatedId)
-
-            return Response.ok(responseYaml).build()
+            // Return the updated YAML source with metadata
+            return Response.ok(updated.yamlSource).build()
 
         } catch (e: Exception) {
             logger.error(e) { "Failed to update revision: ${e.message}" }

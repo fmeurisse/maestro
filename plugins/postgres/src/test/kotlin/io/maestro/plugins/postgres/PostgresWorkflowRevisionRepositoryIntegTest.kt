@@ -9,6 +9,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.maestro.core.WorkflowJsonParser
+import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.kotest.matchers.string.shouldContain as stringShouldContain
 import io.maestro.core.steps.LogTask
 import io.maestro.core.errors.ActiveRevisionConflictException
@@ -532,7 +533,9 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             repository.saveWithSource(revision)
 
             // When
-            val activated = repository.activate(revision.revisionId())
+            val existing = repository.findByIdWithSource(revision.revisionId())!!
+            val updatedYaml = WorkflowYamlMetadataUpdater.updateTimestamp(existing.yamlSource, Instant.now())
+            val activated = repository.activateWithSource(revision.revisionId(), updatedYaml)
 
             // Then
             activated.active shouldBe true
@@ -552,7 +555,9 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             Thread.sleep(10)
 
             // When
-            val activated = repository.activate(revision.revisionId())
+            val existing = repository.findByIdWithSource(revision.revisionId())!!
+            val updatedYaml = WorkflowYamlMetadataUpdater.updateTimestamp(existing.yamlSource, Instant.now())
+            val activated = repository.activateWithSource(revision.revisionId(), updatedYaml)
 
             // Then
             activated.updatedAt.isAfter(now) shouldBe true
@@ -564,7 +569,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
 
             // When/Then
             shouldThrow<WorkflowRevisionNotFoundException> {
-                repository.activate(id)
+                repository.activateWithSource(id, "namespace: test-ns\nid: non-existent\nversion: 1")
             }
         }
 
@@ -575,8 +580,10 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             repository.saveWithSource(createTestRevisionWithSource(version = 2, active = false))
 
             // When
-            repository.activate(WorkflowRevisionID("test-ns", "workflow-1", 1))
-            repository.activate(WorkflowRevisionID("test-ns", "workflow-1", 2))
+            val rev1 = repository.findByIdWithSource(WorkflowRevisionID("test-ns", "workflow-1", 1))!!
+            val rev2 = repository.findByIdWithSource(WorkflowRevisionID("test-ns", "workflow-1", 2))!!
+            repository.activateWithSource(WorkflowRevisionID("test-ns", "workflow-1", 1), WorkflowYamlMetadataUpdater.updateTimestamp(rev1.yamlSource, Instant.now()))
+            repository.activateWithSource(WorkflowRevisionID("test-ns", "workflow-1", 2), WorkflowYamlMetadataUpdater.updateTimestamp(rev2.yamlSource, Instant.now()))
 
             // Then
             val activeRevisions = repository.findActiveRevisions(workflowId)
@@ -593,7 +600,9 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             repository.saveWithSource(revision)
 
             // When
-            val deactivated = repository.deactivate(revision.revisionId())
+            val existing = repository.findByIdWithSource(revision.revisionId())!!
+            val updatedYaml = WorkflowYamlMetadataUpdater.updateTimestamp(existing.yamlSource, Instant.now())
+            val deactivated = repository.deactivateWithSource(revision.revisionId(), updatedYaml)
 
             // Then
             deactivated.active shouldBe false
@@ -613,7 +622,9 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             Thread.sleep(10)
 
             // When
-            val deactivated = repository.deactivate(revision.revisionId())
+            val existing = repository.findByIdWithSource(revision.revisionId())!!
+            val updatedYaml = WorkflowYamlMetadataUpdater.updateTimestamp(existing.yamlSource, Instant.now())
+            val deactivated = repository.deactivateWithSource(revision.revisionId(), updatedYaml)
 
             // Then
             deactivated.updatedAt.isAfter(now) shouldBe true
@@ -625,7 +636,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
 
             // When/Then
             shouldThrow<WorkflowRevisionNotFoundException> {
-                repository.deactivate(id)
+                repository.deactivateWithSource(id, "namespace: test-ns\nid: non-existent\nversion: 1")
             }
         }
     }

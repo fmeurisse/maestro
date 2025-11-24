@@ -1,6 +1,7 @@
 package io.maestro.api.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.jsontype.NamedType
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
@@ -11,6 +12,7 @@ import io.maestro.core.steps.StepTypeRegistry
 import io.maestro.core.steps.If
 import io.maestro.core.steps.LogTask
 import io.maestro.core.steps.Sequence
+import io.maestro.core.steps.registerStepTypes
 import io.quarkus.arc.DefaultBean
 import io.quarkus.jackson.ObjectMapperCustomizer
 import jakarta.enterprise.context.ApplicationScoped
@@ -53,54 +55,14 @@ class JacksonConfig {
             // Register Kotlin and JSR310 modules
             mapper.registerModule(kotlinModule())
             mapper.registerModule(JavaTimeModule())
+            // Serialize Instant as ISO-8601 strings instead of numeric timestamps
+            // This ensures PostgreSQL can parse them correctly in the trigger function
+            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
-            // Register core step types
-            registerCoreStepTypes(mapper)
+            mapper.registerStepTypes()
 
-            // Discover and register plugin step types
-            val pluginTypeCount = registerPluginStepTypes(mapper)
-
-            log.info("Jackson ObjectMapper (JSON) configured with step types (core + $pluginTypeCount plugin types)")
+            log.info { "Jackson ObjectMapper (JSON) configured with ${StepTypeRegistry.getAllTypeNames().size} step types" }
         }
     }
 
-    /**
-     * Registers core step types that are part of the model module.
-     * 
-     * Note: WorkTask is mentioned in the spec but may not exist yet.
-     * Add it here when it's created.
-     */
-    private fun registerCoreStepTypes(mapper: ObjectMapper) {
-        mapper.registerSubtypes(
-            NamedType(Sequence::class.java, "Sequence"),
-            NamedType(If::class.java, "If"),
-            NamedType(LogTask::class.java, "LogTask")
-            // WorkTask will be added when it's created in the model module
-        )
-        log.debug("Registered core step types: Sequence, If, LogTask")
-    }
-
-    /**
-     * Discovers and registers plugin step types via ServiceLoader.
-     * 
-     * @return Number of plugin step types registered
-     */
-    private fun registerPluginStepTypes(mapper: ObjectMapper): Int {
-        return try {
-            val registry = StepTypeRegistry.discover()
-            val registeredTypes = registry.getAllTypes()
-            registeredTypes.forEach { (typeName, stepClass) ->
-                mapper.registerSubtypes(NamedType(stepClass.java, typeName))
-                log.debug("Registered plugin step type: $typeName -> ${stepClass.qualifiedName}")
-            }
-            if (registeredTypes.isNotEmpty()) {
-                log.info("Discovered ${registeredTypes.size} plugin step types")
-            }
-            registeredTypes.size
-        } catch (e: Exception) {
-            log.warn("Failed to discover plugin step types", e)
-            // Continue without plugin types - core types are still registered
-            0
-        }
-    }
 }

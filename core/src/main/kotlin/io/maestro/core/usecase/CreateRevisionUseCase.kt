@@ -3,10 +3,10 @@ package io.maestro.core.usecase
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
+import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.maestro.core.errors.WorkflowNotFoundException
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevision
-import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -48,11 +48,11 @@ class CreateRevisionUseCase constructor(
      * @param namespace The workflow namespace
      * @param id The workflow ID
      * @param yaml Raw YAML string containing workflow definition
-     * @return The created workflow revision ID
+     * @return The created workflow revision with updated YAML source
      * @throws WorkflowNotFoundException if workflow doesn't exist
      * @throws io.maestro.core.errors.WorkflowRevisionParsingException if validation or parsing fails
      */
-    fun execute(namespace: String, id: String, yaml: String): WorkflowRevisionID {
+    fun execute(namespace: String, id: String, yaml: String): WorkflowRevisionWithSource {
         logger.info { "Executing revision creation use case for $namespace/$id" }
 
         val workflowId = WorkflowID(namespace, id)
@@ -100,11 +100,20 @@ class CreateRevisionUseCase constructor(
             updatedAt = now  // REQ-WF-005: Set update timestamp
         )
 
+        // Update YAML source with metadata fields (version, createdAt, updatedAt)
+        logger.debug { "Updating YAML source with metadata" }
+        val updatedYaml = WorkflowYamlMetadataUpdater.updateAllMetadata(
+            yamlSource = yaml,
+            version = nextVersion,
+            createdAt = now,
+            updatedAt = now
+        )
+
         // REQ-WF-007: Persist with YAML source and return
         logger.debug { "Persisting workflow revision: ${revision.namespace}/${revision.id}/${revision.version}" }
-        val revisionWithSource = WorkflowRevisionWithSource.fromRevision(revision, yaml)
+        val revisionWithSource = WorkflowRevisionWithSource.fromRevision(revision, updatedYaml)
         val saved = repository.saveWithSource(revisionWithSource)
         logger.info { "Successfully created workflow revision: ${saved.toWorkflowRevisionID()}" }
-        return saved.toWorkflowRevisionID()
+        return saved
     }
 }

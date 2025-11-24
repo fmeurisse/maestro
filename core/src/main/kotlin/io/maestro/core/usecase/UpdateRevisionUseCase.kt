@@ -3,6 +3,7 @@ package io.maestro.core.usecase
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
+import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.maestro.core.errors.ActiveRevisionConflictException
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
 import io.maestro.model.WorkflowRevisionID
@@ -54,13 +55,13 @@ class UpdateRevisionUseCase constructor(
      * @param id The workflow ID
      * @param version The revision version to update
      * @param yaml New YAML definition
-     * @return The updated revision ID
+     * @return The updated revision with updated YAML source
      * @throws WorkflowRevisionNotFoundException if revision doesn't exist
      * @throws ActiveRevisionConflictException if revision is active
      * @throws InvalidWorkflowRevisionException if namespace, id, or version don't match path parameters
      * @throws io.maestro.core.errors.WorkflowRevisionParsingException if YAML is invalid
      */
-    fun execute(namespace: String, id: String, version: Int, yaml: String): WorkflowRevisionID {
+    fun execute(namespace: String, id: String, version: Int, yaml: String): WorkflowRevisionWithSource {
         logger.info { "Executing update revision use case for $namespace/$id/$version" }
 
         val revisionId = WorkflowRevisionID(namespace, id, version)
@@ -100,24 +101,34 @@ class UpdateRevisionUseCase constructor(
         logger.debug { "Creating updated revision with new data" }
 
         // Create the updated revision, preserving immutable fields
+        val now = Instant.now(clock)
         val updatedRevisionData = existing.copy(
             name = parsedRevision.name,
             description = parsedRevision.description,
             steps = parsedRevision.steps,
-            updatedAt = Instant.now(clock)  // Update timestamp
+            updatedAt = now  // Update timestamp
+        )
+
+        // Update YAML source with metadata (preserve version and createdAt, update updatedAt)
+        logger.debug { "Updating YAML source with metadata" }
+        val updatedYaml = WorkflowYamlMetadataUpdater.updateAllMetadata(
+            yamlSource = yaml,
+            version = version,
+            createdAt = existing.createdAt,  // Preserve original creation time
+            updatedAt = now
         )
 
         val updatedRevision = WorkflowRevisionWithSource(
             revision = updatedRevisionData,
-            yamlSource = yaml  // Store the new YAML source
+            yamlSource = updatedYaml  // Store the updated YAML source
         )
 
         // Update in repository
         logger.debug { "Updating revision in repository: $revisionId" }
-        repository.updateWithSource(updatedRevision)
+        val saved = repository.updateWithSource(updatedRevision)
 
         logger.info { "Successfully updated revision: $revisionId" }
-        return revisionId
+        return saved
     }
 
     /**
@@ -125,11 +136,11 @@ class UpdateRevisionUseCase constructor(
      *
      * @param revisionId The complete revision identifier
      * @param yaml New YAML definition
-     * @return The updated revision ID
+     * @return The updated revision with updated YAML source
      * @throws WorkflowRevisionNotFoundException if revision doesn't exist
      * @throws ActiveRevisionConflictException if revision is active
      */
-    fun execute(revisionId: WorkflowRevisionID, yaml: String): WorkflowRevisionID {
+    fun execute(revisionId: WorkflowRevisionID, yaml: String): WorkflowRevisionWithSource {
         return execute(revisionId.namespace, revisionId.id, revisionId.version, yaml)
     }
 }

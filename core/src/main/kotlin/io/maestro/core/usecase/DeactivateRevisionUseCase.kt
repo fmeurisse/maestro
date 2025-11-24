@@ -2,11 +2,14 @@ package io.maestro.core.usecase
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.IWorkflowRevisionRepository
+import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
-import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
+import io.maestro.model.WorkflowRevisionWithSource
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import java.time.Clock
+import java.time.Instant
 
 /**
  * Use case for deactivating a workflow revision.
@@ -18,9 +21,13 @@ import jakarta.inject.Inject
  * Clean Architecture: Business logic isolated from infrastructure concerns.
  */
 @ApplicationScoped
-class DeactivateRevisionUseCase @Inject constructor(
-    private val repository: IWorkflowRevisionRepository
+class DeactivateRevisionUseCase constructor(
+    private val repository: IWorkflowRevisionRepository,
+    private val clock: Clock
 ) {
+
+    @Inject
+    constructor(repository: IWorkflowRevisionRepository): this(repository, Clock.systemUTC())
 
     private val logger = KotlinLogging.logger {}
 
@@ -33,16 +40,25 @@ class DeactivateRevisionUseCase @Inject constructor(
      * @param namespace The workflow namespace
      * @param id The workflow ID
      * @param version The revision version to deactivate
-     * @return The deactivated revision
+     * @return The deactivated revision with updated YAML source
      * @throws WorkflowRevisionNotFoundException if revision doesn't exist
      */
-    fun execute(namespace: String, id: String, version: Int): WorkflowRevision {
+    fun execute(namespace: String, id: String, version: Int): WorkflowRevisionWithSource {
         logger.info { "Executing deactivation use case for $namespace/$id/$version" }
 
         val revisionId = WorkflowRevisionID(namespace, id, version)
 
-        // Deactivate the revision (repository handles existence check)
-        val deactivated = repository.deactivate(revisionId)
+        // Get existing revision with source
+        val existing = repository.findByIdWithSource(revisionId)
+            ?: throw WorkflowRevisionNotFoundException(revisionId)
+
+        // Update YAML source with new updatedAt timestamp
+        val now = Instant.now(clock)
+        logger.debug { "Updating YAML source with metadata" }
+        val updatedYaml = WorkflowYamlMetadataUpdater.updateTimestamp(existing.yamlSource, now)
+
+        // Deactivate the revision with updated YAML source
+        val deactivated = repository.deactivateWithSource(revisionId, updatedYaml)
 
         logger.info { "Successfully deactivated revision: $revisionId" }
         return deactivated
@@ -52,10 +68,10 @@ class DeactivateRevisionUseCase @Inject constructor(
      * Deactivates a workflow revision using WorkflowRevisionID.
      *
      * @param revisionId The complete revision identifier
-     * @return The deactivated revision
+     * @return The deactivated revision with updated YAML source
      * @throws WorkflowRevisionNotFoundException if revision doesn't exist
      */
-    fun execute(revisionId: WorkflowRevisionID): WorkflowRevision {
+    fun execute(revisionId: WorkflowRevisionID): WorkflowRevisionWithSource {
         return execute(revisionId.namespace, revisionId.id, revisionId.version)
     }
 }

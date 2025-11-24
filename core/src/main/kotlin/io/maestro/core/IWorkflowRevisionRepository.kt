@@ -136,22 +136,24 @@ interface IWorkflowRevisionRepository {
     fun listWorkflows(namespace: String): List<WorkflowID>
 
     /**
-     * Activate a workflow revision (updates active flag only).
-     * Returns the updated revision WITHOUT YAML source.
+     * Activate a workflow revision (updates active flag and YAML source).
+     * Returns the updated revision WITH YAML source.
      *
      * @param id The composite identifier (namespace + id + version)
-     * @return The activated revision
+     * @param updatedYamlSource The updated YAML source with metadata changes
+     * @return The activated revision with updated YAML source
      * @throws io.maestro.core.errors.WorkflowRevisionNotFoundException if revision doesn't exist
      */
-    fun activate(id: WorkflowRevisionID): WorkflowRevision
+    fun activateWithSource(id: WorkflowRevisionID, updatedYamlSource: String): WorkflowRevisionWithSource
 
     /**
-     * Deactivate a workflow revision (updates active flag only).
-     * Returns the updated revision WITHOUT YAML source.
+     * Deactivate a workflow revision (updates active flag and YAML source).
+     * Returns the updated revision WITH YAML source.
      *
      * @param id The composite identifier (namespace + id + version)
-     * @return The deactivated revision
+     * @param updatedYamlSource The updated YAML source with metadata changes
+     * @return The deactivated revision with updated YAML source
      * @throws io.maestro.core.errors.WorkflowRevisionNotFoundException if revision doesn't exist
      */
-    fun deactivate(id: WorkflowRevisionID): WorkflowRevision
+    fun deactivateWithSource(id: WorkflowRevisionID, updatedYamlSource: String): WorkflowRevisionWithSource
 }

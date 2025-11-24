@@ -325,11 +325,11 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
         }
     }
 
-    override fun activate(id: WorkflowRevisionID): WorkflowRevision {
-        logger.debug { "Activating workflow revision: $id" }
+    override fun activateWithSource(id: WorkflowRevisionID, updatedYamlSource: String): WorkflowRevisionWithSource {
+        logger.debug { "Activating workflow revision with source: $id" }
 
-        return jdbi.withHandle<WorkflowRevision, Exception> { handle ->
-            // Get current revision within the same handle
+        return jdbi.withHandle<WorkflowRevisionWithSource, Exception> { handle ->
+            // Get current revision data within the same handle
             val currentJson = handle.createQuery("""
                 SELECT revision_data
                 FROM workflow_revisions
@@ -348,27 +348,30 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
             val updatedRevision = current.activate()
             val revisionJson = jsonParser.toJson(updatedRevision)
 
+            // Update both revision_data and yaml_source
             handle.createUpdate("""
                 UPDATE workflow_revisions
-                SET revision_data = :revisionData::jsonb
+                SET revision_data = :revisionData::jsonb,
+                    yaml_source = :yamlSource
                 WHERE namespace = :namespace AND id = :id AND version = :version
             """.trimIndent())
                 .bind("revisionData", revisionJson)
+                .bind("yamlSource", updatedYamlSource)
                 .bind("namespace", id.namespace)
                 .bind("id", id.id)
                 .bind("version", id.version)
                 .execute()
 
             logger.debug { "Successfully activated workflow revision: $id" }
-            updatedRevision
+            WorkflowRevisionWithSource.fromRevision(updatedRevision, updatedYamlSource)
         }
     }
 
-    override fun deactivate(id: WorkflowRevisionID): WorkflowRevision {
-        logger.debug { "Deactivating workflow revision: $id" }
+    override fun deactivateWithSource(id: WorkflowRevisionID, updatedYamlSource: String): WorkflowRevisionWithSource {
+        logger.debug { "Deactivating workflow revision with source: $id" }
 
-        return jdbi.withHandle<WorkflowRevision, Exception> { handle ->
-            // Get current revision within the same handle
+        return jdbi.withHandle<WorkflowRevisionWithSource, Exception> { handle ->
+            // Get current revision data within the same handle
             val currentJson = handle.createQuery("""
                 SELECT revision_data
                 FROM workflow_revisions
@@ -387,19 +390,22 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
             val updatedRevision = current.deactivate()
             val revisionJson = jsonParser.toJson(updatedRevision)
 
+            // Update both revision_data and yaml_source
             handle.createUpdate("""
                 UPDATE workflow_revisions
-                SET revision_data = :revisionData::jsonb
+                SET revision_data = :revisionData::jsonb,
+                    yaml_source = :yamlSource
                 WHERE namespace = :namespace AND id = :id AND version = :version
             """.trimIndent())
                 .bind("revisionData", revisionJson)
+                .bind("yamlSource", updatedYamlSource)
                 .bind("namespace", id.namespace)
                 .bind("id", id.id)
                 .bind("version", id.version)
                 .execute()
 
             logger.debug { "Successfully deactivated workflow revision: $id" }
-            updatedRevision
+            WorkflowRevisionWithSource.fromRevision(updatedRevision, updatedYamlSource)
         }
     }
 }
