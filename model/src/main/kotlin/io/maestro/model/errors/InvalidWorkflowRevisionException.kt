@@ -1,4 +1,4 @@
-package io.maestro.model.exception
+package io.maestro.model.errors
 
 /**
  * Thrown when a workflow revision fails domain validation.
@@ -12,7 +12,7 @@ package io.maestro.model.exception
  * 
  * @property message Human-readable validation error message
  */
-class InvalidWorkflowRevision(
+class InvalidWorkflowRevisionException(
     message: String,
     cause: Throwable? = null
 ) : MaestroException(
