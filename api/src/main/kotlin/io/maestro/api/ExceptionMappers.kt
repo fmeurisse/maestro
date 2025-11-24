@@ -1,6 +1,6 @@
 package io.maestro.api
 
-import io.maestro.model.exception.MaestroException
+import io.maestro.model.errors.MaestroException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
 import jakarta.ws.rs.ext.Provider
@@ -34,15 +34,18 @@ data class ProblemDetail(
 
 /**
  * Maps MaestroException (and all its subclasses) to RFC 7807 Problem Details responses.
- * 
+ *
  * This mapper handles all exceptions that extend MaestroException:
  * - MalformedWorkflowIDException (400)
  * - MalformedWorkflowRevisionIDException (400)
  * - InvalidWorkflowRevision (400)
+ * - InvalidWorkflowRevisionException (400)
  * - WorkflowRevisionParsingException (400)
  * - WorkflowAlreadyExistsException (409)
+ * - ActiveRevisionConflictException (409)
  * - WorkflowRevisionNotFoundException (404)
- * 
+ * - WorkflowNotFoundException (404)
+ *
  * The exception's type, title, status, and message are used directly from the exception,
  * ensuring consistency with the RFC 7807 Problem Details format.
  */
@@ -71,8 +74,6 @@ class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
             .build()
     }
 }
-
-
 
 /**
  * Exception mapper for JAX-RS NotSupportedException (unsupported media type).

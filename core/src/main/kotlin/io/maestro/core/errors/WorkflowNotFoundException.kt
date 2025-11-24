@@ -1,7 +1,7 @@
-package io.maestro.core.exception
+package io.maestro.core.errors
 
 import io.maestro.model.WorkflowID
-import io.maestro.model.exception.MaestroException
+import io.maestro.model.errors.MaestroException
 
 /**
  * Thrown when a workflow cannot be found.

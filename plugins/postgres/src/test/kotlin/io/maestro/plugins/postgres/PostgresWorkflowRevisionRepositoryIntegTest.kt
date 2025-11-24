@@ -11,9 +11,9 @@ import io.kotest.matchers.shouldBe
 import io.maestro.core.WorkflowJsonParser
 import io.kotest.matchers.string.shouldContain as stringShouldContain
 import io.maestro.core.steps.LogTask
-import io.maestro.core.exception.ActiveRevisionConflictException
-import io.maestro.core.exception.WorkflowAlreadyExistsException
-import io.maestro.core.exception.WorkflowRevisionNotFoundException
+import io.maestro.core.errors.ActiveRevisionConflictException
+import io.maestro.core.errors.WorkflowAlreadyExistsException
+import io.maestro.core.errors.WorkflowRevisionNotFoundException
 import io.maestro.model.*
 import liquibase.command.CommandScope
 import liquibase.command.core.UpdateCommandStep

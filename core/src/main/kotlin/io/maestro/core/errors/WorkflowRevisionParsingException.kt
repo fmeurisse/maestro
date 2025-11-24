@@ -1,6 +1,6 @@
-package io.maestro.core.exception
+package io.maestro.core.errors
 
-import io.maestro.model.exception.MaestroException
+import io.maestro.model.errors.MaestroException
 
 /**
  * Thrown when workflow revision parsing fails (REQ-WF-056, REQ-WF-057, REQ-WF-058).

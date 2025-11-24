@@ -30,7 +30,7 @@ interface IWorkflowRevisionRepository {
      *
      * @param revision The workflow revision to save
      * @return The saved revision
-     * @throws io.maestro.core.exception.WorkflowAlreadyExistsException if revision already exists
+     * @throws io.maestro.core.errors.WorkflowAlreadyExistsException if revision already exists
      */
     fun saveWithSource(revision: WorkflowRevisionWithSource): WorkflowRevisionWithSource
 
@@ -40,8 +40,8 @@ interface IWorkflowRevisionRepository {
      *
      * @param revision The workflow revision to update
      * @return The updated revision
-     * @throws io.maestro.core.exception.WorkflowRevisionNotFoundException if revision doesn't exist
-     * @throws io.maestro.core.exception.ActiveRevisionConflictException if revision is active
+     * @throws io.maestro.core.errors.WorkflowRevisionNotFoundException if revision doesn't exist
+     * @throws io.maestro.core.errors.ActiveRevisionConflictException if revision is active
      */
     fun updateWithSource(revision: WorkflowRevisionWithSource): WorkflowRevisionWithSource
 
@@ -112,8 +112,8 @@ interface IWorkflowRevisionRepository {
      * Throws exception if revision is active or doesn't exist.
      *
      * @param id The composite identifier (namespace + id + version)
-     * @throws io.maestro.core.exception.WorkflowRevisionNotFoundException if revision doesn't exist
-     * @throws io.maestro.core.exception.ActiveRevisionConflictException if revision is active
+     * @throws io.maestro.core.errors.WorkflowRevisionNotFoundException if revision doesn't exist
+     * @throws io.maestro.core.errors.ActiveRevisionConflictException if revision is active
      */
     fun deleteById(id: WorkflowRevisionID)
 
@@ -141,7 +141,7 @@ interface IWorkflowRevisionRepository {
      *
      * @param id The composite identifier (namespace + id + version)
      * @return The activated revision
-     * @throws io.maestro.core.exception.WorkflowRevisionNotFoundException if revision doesn't exist
+     * @throws io.maestro.core.errors.WorkflowRevisionNotFoundException if revision doesn't exist
      */
     fun activate(id: WorkflowRevisionID): WorkflowRevision
 
@@ -151,7 +151,7 @@ interface IWorkflowRevisionRepository {
      *
      * @param id The composite identifier (namespace + id + version)
      * @return The deactivated revision
-     * @throws io.maestro.core.exception.WorkflowRevisionNotFoundException if revision doesn't exist
+     * @throws io.maestro.core.errors.WorkflowRevisionNotFoundException if revision doesn't exist
      */
     fun deactivate(id: WorkflowRevisionID): WorkflowRevision
 }
