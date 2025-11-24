@@ -6,7 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.core.exception.WorkflowRevisionParsingException
+import io.maestro.core.errors.WorkflowRevisionParsingException
 import io.maestro.core.steps.registerStepTypes
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID

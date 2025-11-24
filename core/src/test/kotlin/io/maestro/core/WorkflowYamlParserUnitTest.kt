@@ -5,11 +5,11 @@ import io.kotest.core.spec.style.FeatureSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.maestro.core.exception.WorkflowRevisionParsingException
+import io.maestro.core.errors.WorkflowRevisionParsingException
 import io.maestro.core.steps.If
 import io.maestro.core.steps.LogTask
 import io.maestro.core.steps.Sequence
-import io.maestro.model.exception.InvalidWorkflowRevision
+import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
 import java.time.Instant
@@ -211,7 +211,7 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 parser.parseRevision(yaml)
             }
             exception.cause.shouldNotBeNull()
-            (exception.cause is InvalidWorkflowRevision) shouldBe true
+            (exception.cause is InvalidWorkflowRevisionException) shouldBe true
         }
 
         scenario("should skip validation when validate=false") {
@@ -257,7 +257,7 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 parser.parseRevision(yaml)
             }
             exception.cause.shouldNotBeNull()
-            (exception.cause is InvalidWorkflowRevision) shouldBe true
+            (exception.cause is InvalidWorkflowRevisionException) shouldBe true
         }
 
         scenario("should validate name is not blank") {
@@ -280,7 +280,7 @@ class WorkflowYamlParserUnitTest : FeatureSpec({
                 parser.parseRevision(yaml)
             }
             exception.cause.shouldNotBeNull()
-            (exception.cause is InvalidWorkflowRevision) shouldBe true
+            (exception.cause is InvalidWorkflowRevisionException) shouldBe true
         }
     }
 

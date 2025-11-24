@@ -7,7 +7,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.core.exception.WorkflowRevisionParsingException
+import io.maestro.core.errors.WorkflowRevisionParsingException
 import io.maestro.core.steps.registerStepTypes
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
@@ -75,6 +75,17 @@ class WorkflowYamlParser {
     fun toYaml(revisionID: WorkflowRevisionID): String {
         logger.debug { "Serializing workflow revision ID to YAML: $revisionID" }
         return yamlMapper.writeValueAsString(revisionID)
+    }
+
+    /**
+     * Serializes a list of objects to YAML.
+     *
+     * @param list List to serialize
+     * @return YAML string representation
+     */
+    fun toYaml(list: List<*>): String {
+        logger.debug { "Serializing list of ${list.size} items to YAML" }
+        return yamlMapper.writeValueAsString(list)
     }
 
 }
