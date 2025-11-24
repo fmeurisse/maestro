@@ -1,6 +1,6 @@
 package io.maestro.model
 
-import io.maestro.model.exception.InvalidWorkflowRevision
+import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.maestro.model.steps.Step
 import java.time.Instant
 
@@ -39,9 +39,9 @@ data class WorkflowRevisionWithSource(
          * Factory method with domain validation that throws domain exceptions.
          * Validates both revision data and YAML source.
          *
-         * @throws InvalidWorkflowRevision if any validation rule is violated
+         * @throws InvalidWorkflowRevisionException if any validation rule is violated
          */
-        @Throws(InvalidWorkflowRevision::class)
+        @Throws(InvalidWorkflowRevisionException::class)
         fun create(
             namespace: String,
             id: String,
@@ -55,7 +55,7 @@ data class WorkflowRevisionWithSource(
             updatedAt: Instant = createdAt
         ): WorkflowRevisionWithSource {
             if (yamlSource.isBlank()) {
-                throw InvalidWorkflowRevision("YAML source must not be blank")
+                throw InvalidWorkflowRevisionException("YAML source must not be blank")
             }
             val revision = WorkflowRevision.validateAndCreate(
                 namespace, id, version, name, description,
@@ -67,10 +67,10 @@ data class WorkflowRevisionWithSource(
         /**
          * Create from existing WorkflowRevision with YAML source
          */
-        @Throws(InvalidWorkflowRevision::class)
+        @Throws(InvalidWorkflowRevisionException::class)
         fun fromRevision(revision: WorkflowRevision, yamlSource: String): WorkflowRevisionWithSource {
             if (yamlSource.isBlank()) {
-                throw InvalidWorkflowRevision("YAML source must not be blank")
+                throw InvalidWorkflowRevisionException("YAML source must not be blank")
             }
             return WorkflowRevisionWithSource(revision, yamlSource)
         }
@@ -104,7 +104,7 @@ data class WorkflowRevisionWithSource(
      */
     fun updateContent(newYamlSource: String, newSteps: List<Step>, newDescription: String? = null): WorkflowRevisionWithSource {
         if (newYamlSource.isBlank()) {
-            throw InvalidWorkflowRevision("YAML source must not be blank")
+            throw InvalidWorkflowRevisionException("YAML source must not be blank")
         }
         val updatedRevision = revision.copy(
             description = newDescription ?: revision.description,

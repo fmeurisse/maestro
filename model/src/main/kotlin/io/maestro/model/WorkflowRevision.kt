@@ -1,6 +1,6 @@
 package io.maestro.model
 
-import io.maestro.model.exception.InvalidWorkflowRevision
+import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.maestro.model.steps.Step
 import java.time.Instant
 
@@ -54,9 +54,9 @@ data class WorkflowRevision(
          * Factory method with domain validation that throws domain exceptions.
          * Use this instead of constructor to get proper domain exception handling.
          *
-         * @throws InvalidWorkflowRevision if any validation rule is violated
+         * @throws InvalidWorkflowRevisionException if any validation rule is violated
          */
-        @Throws(InvalidWorkflowRevision::class)
+        @Throws(InvalidWorkflowRevisionException::class)
         fun validateAndCreate(
             namespace: String,
             id: String,
@@ -98,42 +98,42 @@ data class WorkflowRevision(
             description: String
         ) {
             if (namespace.isBlank()) {
-                throw InvalidWorkflowRevision("Namespace must not be blank")
+                throw InvalidWorkflowRevisionException("Namespace must not be blank")
             }
             if (namespace.length > MAX_NAMESPACE_LENGTH) {
-                throw InvalidWorkflowRevision("Namespace must not exceed $MAX_NAMESPACE_LENGTH characters")
+                throw InvalidWorkflowRevisionException("Namespace must not exceed $MAX_NAMESPACE_LENGTH characters")
             }
             if (!namespace.matches(NAMESPACE_REGEX)) {
-                throw InvalidWorkflowRevision(
+                throw InvalidWorkflowRevisionException(
                     "Namespace must contain only alphanumeric characters, hyphens, and underscores"
                 )
             }
 
             if (id.isBlank()) {
-                throw InvalidWorkflowRevision("ID must not be blank")
+                throw InvalidWorkflowRevisionException("ID must not be blank")
             }
             if (id.length > MAX_ID_LENGTH) {
-                throw InvalidWorkflowRevision("ID must not exceed $MAX_ID_LENGTH characters")
+                throw InvalidWorkflowRevisionException("ID must not exceed $MAX_ID_LENGTH characters")
             }
             if (!id.matches(ID_REGEX)) {
-                throw InvalidWorkflowRevision(
+                throw InvalidWorkflowRevisionException(
                     "ID must contain only alphanumeric characters, hyphens, and underscores"
                 )
             }
 
             if (version <= 0) {
-                throw InvalidWorkflowRevision("Version must be positive")
+                throw InvalidWorkflowRevisionException("Version must be positive")
             }
 
             if (name.isBlank()) {
-                throw InvalidWorkflowRevision("Name must not be blank")
+                throw InvalidWorkflowRevisionException("Name must not be blank")
             }
             if (name.length > MAX_NAME_LENGTH) {
-                throw InvalidWorkflowRevision("Name must not exceed $MAX_NAME_LENGTH characters")
+                throw InvalidWorkflowRevisionException("Name must not exceed $MAX_NAME_LENGTH characters")
             }
 
             if (description.length > MAX_DESCRIPTION_LENGTH) {
-                throw InvalidWorkflowRevision(
+                throw InvalidWorkflowRevisionException(
                     "Description must not exceed $MAX_DESCRIPTION_LENGTH characters"
                 )
             }

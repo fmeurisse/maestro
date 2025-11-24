@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.FeatureSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.throwable.shouldHaveMessage
-import io.maestro.model.exception.MalformedWorkflowIDException
+import io.maestro.model.errors.MalformedWorkflowIDException
 
 class WorkflowIDUnitTest : FeatureSpec({
 

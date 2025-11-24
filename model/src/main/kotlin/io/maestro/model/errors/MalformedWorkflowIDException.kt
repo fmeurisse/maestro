@@ -1,4 +1,4 @@
-package io.maestro.model.exception
+package io.maestro.model.errors
 
 /**
  * Thrown when a WorkflowID string cannot be parsed from the expected format.

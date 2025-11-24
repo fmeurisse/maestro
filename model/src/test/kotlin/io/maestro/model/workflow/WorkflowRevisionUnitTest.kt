@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.throwable.shouldHaveMessage
 import io.maestro.model.WorkflowRevision
-import io.maestro.model.exception.InvalidWorkflowRevision
+import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.maestro.model.steps.Step
 import java.time.Instant
 
@@ -40,7 +40,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when namespace is blank") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "",
                     id = "workflow-1",
@@ -54,7 +54,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when id is blank") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "",
@@ -68,7 +68,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when namespace format is invalid") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "invalid namespace!",
                     id = "workflow-1",
@@ -83,7 +83,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when id format is invalid") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "invalid id!",
@@ -98,7 +98,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when version is zero") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
@@ -112,7 +112,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when version is negative") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
@@ -126,7 +126,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when name is blank") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
@@ -140,7 +140,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when namespace exceeds maximum length") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "a".repeat(101),
                     id = "workflow-1",
@@ -155,7 +155,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when id exceeds maximum length") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "a".repeat(101),
@@ -170,7 +170,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when name exceeds maximum length") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",
@@ -185,7 +185,7 @@ class WorkflowRevisionUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when description exceeds maximum length") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevision.validateAndCreate(
                     namespace = "production",
                     id = "workflow-1",

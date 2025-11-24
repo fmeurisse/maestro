@@ -7,7 +7,7 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.throwable.shouldHaveMessage
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionWithSource
-import io.maestro.model.exception.InvalidWorkflowRevision
+import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.maestro.model.steps.Step
 
 class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
@@ -44,7 +44,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when yaml source is blank") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevisionWithSource.create(
                     namespace = "production",
                     id = "workflow-1",
@@ -59,7 +59,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
         }
 
         scenario("should throw InvalidWorkflowRevision when yaml source is whitespace-only") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevisionWithSource.create(
                     namespace = "production",
                     id = "workflow-1",
@@ -74,7 +74,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
         }
 
         scenario("should propagate validation errors from revision creation") {
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevisionWithSource.create(
                     namespace = "",  // Invalid namespace
                     id = "workflow-1",
@@ -117,7 +117,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
                 steps = mockSteps
             )
 
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 WorkflowRevisionWithSource.fromRevision(revision, "")
             }
             exception shouldHaveMessage "YAML source must not be blank"
@@ -262,7 +262,7 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
                 steps = mockSteps
             )
 
-            val exception = shouldThrow<InvalidWorkflowRevision> {
+            val exception = shouldThrow<InvalidWorkflowRevisionException> {
                 withSource.updateContent("", mockSteps)
             }
             exception shouldHaveMessage "YAML source must not be blank"

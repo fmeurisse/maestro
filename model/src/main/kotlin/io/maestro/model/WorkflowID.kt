@@ -1,7 +1,7 @@
 package io.maestro.model
 
 import io.maestro.model.WorkflowID.Companion.parse
-import io.maestro.model.exception.MalformedWorkflowIDException
+import io.maestro.model.errors.MalformedWorkflowIDException
 
 /**
  * Immutable identity of a workflow across all its revisions.

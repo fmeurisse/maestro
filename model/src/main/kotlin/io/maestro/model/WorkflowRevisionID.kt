@@ -1,6 +1,6 @@
 package io.maestro.model
 
-import io.maestro.model.exception.MalformedWorkflowRevisionIDException
+import io.maestro.model.errors.MalformedWorkflowRevisionIDException
 
 /**
  * Composite identifier for a workflow revision.

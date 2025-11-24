@@ -1,4 +1,4 @@
-package io.maestro.model.exception
+package io.maestro.model.errors
 
 /**
  * Abstract root exception for all Maestro errors.
