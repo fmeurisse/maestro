@@ -3,7 +3,7 @@ package io.maestro.core.usecase
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.exception.WorkflowAlreadyExistsException
+import io.maestro.core.errors.WorkflowAlreadyExistsException
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
@@ -50,7 +50,7 @@ class CreateWorkflowUseCase constructor(
      * @param yaml Raw YAML string containing workflow definition
      * @return The created workflow revision (without YAML source)
      * @throws WorkflowAlreadyExistsException if workflow already exists (REQ-WF-004)
-     * @throws io.maestro.core.exception.WorkflowRevisionParsingException if validation or parsing fails (REQ-WF-006)
+     * @throws io.maestro.core.errors.WorkflowRevisionParsingException if validation or parsing fails (REQ-WF-006)
      */
     fun execute(yaml: String): WorkflowRevisionID {
         logger.info { "Executing workflow creation use case" }

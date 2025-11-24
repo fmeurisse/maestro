@@ -6,9 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.exception.WorkflowNotFoundException
+import io.maestro.core.errors.WorkflowNotFoundException
 import io.maestro.core.steps.LogTask
-import io.maestro.core.steps.Sequence
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionWithSource

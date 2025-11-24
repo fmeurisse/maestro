@@ -8,11 +8,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.exception.WorkflowAlreadyExistsException
-import io.maestro.core.exception.WorkflowRevisionParsingException
-import io.maestro.core.steps.LogTask
+import io.maestro.core.errors.WorkflowAlreadyExistsException
+import io.maestro.core.errors.WorkflowRevisionParsingException
 import io.maestro.model.WorkflowID
-import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
 import io.mockk.clearMocks
