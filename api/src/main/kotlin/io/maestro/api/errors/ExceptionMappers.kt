@@ -1,10 +1,11 @@
-package io.maestro.api
+package io.maestro.api.errors
 
 import io.maestro.model.errors.MaestroException
 import jakarta.ws.rs.core.Response
 import jakarta.ws.rs.ext.ExceptionMapper
 import jakarta.ws.rs.ext.Provider
 import io.github.oshai.kotlinlogging.KotlinLogging
+import jakarta.ws.rs.NotSupportedException
 import java.net.URI
 import java.time.Instant
 
@@ -80,11 +81,11 @@ class MaestroExceptionMapper : ExceptionMapper<MaestroException> {
  * Returns 415 Unsupported Media Type when client sends wrong Content-Type.
  */
 @Provider
-class NotSupportedExceptionMapper : ExceptionMapper<jakarta.ws.rs.NotSupportedException> {
+class NotSupportedExceptionMapper : ExceptionMapper<NotSupportedException> {
 
     private val logger = KotlinLogging.logger {}
 
-    override fun toResponse(exception: jakarta.ws.rs.NotSupportedException): Response {
+    override fun toResponse(exception: NotSupportedException): Response {
         logger.debug { "Unsupported media type: ${exception.message}" }
 
         val problemDetail = ProblemDetail(

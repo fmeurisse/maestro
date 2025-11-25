@@ -10,6 +10,7 @@ import io.maestro.core.usecase.DeactivateRevisionUseCase
 import io.maestro.core.usecase.DeleteRevisionUseCase
 import io.maestro.core.usecase.DeleteWorkflowUseCase
 import io.maestro.core.usecase.UpdateRevisionUseCase
+import io.maestro.api.errors.InvalidCurrentUpdatedAtHeaderException
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevisionID
 import jakarta.inject.Inject
@@ -218,16 +219,19 @@ class WorkflowResource @Inject constructor(
     }
 
     /**
-     * Activates a workflow revision.
+     * Activates a workflow revision with optimistic locking.
      *
      * Endpoint: POST /api/workflows/{namespace}/{id}/{version}/activate
+     * Header: X-Current-Updated-At (required) - The current updatedAt timestamp for optimistic locking
      *
      * Implements FR-009, FR-011 - Activate revisions with multi-active support.
+     * Implements T099 - Optimistic locking using updatedAt field.
      *
      * @param namespace The workflow namespace
      * @param id The workflow ID
      * @param version The revision version to activate
-     * @return 200 OK with activated revision, or error response
+     * @param currentUpdatedAtHeader The current updatedAt timestamp from X-Current-Updated-At header
+     * @return 200 OK with activated revision, 409 Conflict if optimistic lock fails, or error response
      */
     @POST
     @Path("/{namespace}/{id}/{version}/activate")
@@ -235,13 +239,29 @@ class WorkflowResource @Inject constructor(
     fun activateRevision(
         @PathParam("namespace") namespace: String,
         @PathParam("id") id: String,
-        @PathParam("version") version: Int
+        @PathParam("version") version: Int,
+        @HeaderParam("X-Current-Updated-At") currentUpdatedAtHeader: String?
     ): Response {
         logger.info { "Received activation request for $namespace/$id/$version" }
 
         try {
-            // Execute activation use case
-            val activated = activateRevisionUseCase.execute(namespace, id, version)
+            // Parse and validate the current updatedAt header
+            val currentUpdatedAt = if (currentUpdatedAtHeader.isNullOrBlank()) {
+                val ex = InvalidCurrentUpdatedAtHeaderException(null)
+                logger.warn { ex.message }
+                throw ex
+            } else {
+                try {
+                    java.time.Instant.parse(currentUpdatedAtHeader)
+                } catch (e: Exception) {
+                    val ex = InvalidCurrentUpdatedAtHeaderException(currentUpdatedAtHeader)
+                    logger.warn { ex.message }
+                    throw ex
+                }
+            }
+
+            // Execute activation use case with optimistic locking
+            val activated = activateRevisionUseCase.execute(namespace, id, version, currentUpdatedAt)
             logger.info { "Successfully activated revision: $namespace/$id/$version" }
 
             // Return the updated YAML source with metadata
@@ -254,16 +274,19 @@ class WorkflowResource @Inject constructor(
     }
 
     /**
-     * Deactivates a workflow revision.
+     * Deactivates a workflow revision with optimistic locking.
      *
      * Endpoint: POST /api/workflows/{namespace}/{id}/{version}/deactivate
+     * Header: X-Current-Updated-At (required) - The current updatedAt timestamp for optimistic locking
      *
      * Implements FR-012 - Deactivate revisions.
+     * Implements T099 - Optimistic locking using updatedAt field.
      *
      * @param namespace The workflow namespace
      * @param id The workflow ID
      * @param version The revision version to deactivate
-     * @return 200 OK with deactivated revision, or error response
+     * @param currentUpdatedAtHeader The current updatedAt timestamp from X-Current-Updated-At header
+     * @return 200 OK with deactivated revision, 409 Conflict if optimistic lock fails, or error response
      */
     @POST
     @Path("/{namespace}/{id}/{version}/deactivate")
@@ -271,13 +294,29 @@ class WorkflowResource @Inject constructor(
     fun deactivateRevision(
         @PathParam("namespace") namespace: String,
         @PathParam("id") id: String,
-        @PathParam("version") version: Int
+        @PathParam("version") version: Int,
+        @HeaderParam("X-Current-Updated-At") currentUpdatedAtHeader: String?
     ): Response {
         logger.info { "Received deactivation request for $namespace/$id/$version" }
 
         try {
-            // Execute deactivation use case
-            val deactivated = deactivateRevisionUseCase.execute(namespace, id, version)
+            // Parse and validate the current updatedAt header
+            val currentUpdatedAt = if (currentUpdatedAtHeader.isNullOrBlank()) {
+                val ex = InvalidCurrentUpdatedAtHeaderException(null)
+                logger.warn { ex.message }
+                throw ex
+            } else {
+                try {
+                    java.time.Instant.parse(currentUpdatedAtHeader)
+                } catch (e: Exception) {
+                    val ex = InvalidCurrentUpdatedAtHeaderException(currentUpdatedAtHeader)
+                    logger.warn { ex.message }
+                    throw ex
+                }
+            }
+
+            // Execute deactivation use case with optimistic locking
+            val deactivated = deactivateRevisionUseCase.execute(namespace, id, version, currentUpdatedAt)
             logger.info { "Successfully deactivated revision: $namespace/$id/$version" }
 
             // Return the updated YAML source with metadata
@@ -297,11 +336,16 @@ class WorkflowResource @Inject constructor(
      *
      * Implements FR-010 - Update inactive revisions in place.
      *
+     * Supports optimistic locking using the `updatedAt` field in the YAML body.
+     * The update will only succeed if the updatedAt timestamp in the YAML matches
+     * the current value in the database, preventing lost updates from concurrent
+     * modifications.
+     *
      * @param namespace The workflow namespace
      * @param id The workflow ID
      * @param version The revision version to update
-     * @param yaml New YAML workflow definition
-     * @return 200 OK with updated revision, or error response
+     * @param yaml New YAML workflow definition (must include updatedAt field for optimistic locking)
+     * @return 200 OK with updated revision, or 409 Conflict if optimistic lock fails
      */
     @PUT
     @Path("/{namespace}/{id}/{version}")
@@ -316,7 +360,7 @@ class WorkflowResource @Inject constructor(
         logger.info { "Received update request for $namespace/$id/$version" }
 
         try {
-            // Execute update use case with raw YAML
+            // Execute update use case with raw YAML (optimistic locking uses updatedAt from YAML)
             val updated = updateRevisionUseCase.execute(namespace, id, version, yaml)
             logger.info { "Successfully updated revision: ${updated.toWorkflowRevisionID()}" }
 

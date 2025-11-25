@@ -47,6 +47,25 @@ class WorkflowDeleteAPIContractTest {
                     message: "$message"
             """.trimIndent()
         }
+
+        /**
+         * Fetches the existing revision and extracts its updatedAt for optimistic locking.
+         */
+        private fun getExistingUpdatedAt(namespace: String, id: String, version: Int): String {
+            val existingRevisionYaml = RestAssured.given()
+                .accept("application/yaml")
+            .`when`()
+                .get("$WORKFLOW_ENDPOINT/$namespace/$id/$version")
+            .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString()
+
+            val updatedAtRegex = Regex("""updatedAt:\s*([^\s\n]+)""")
+            val updatedAtMatch = updatedAtRegex.find(existingRevisionYaml)
+            return updatedAtMatch?.groupValues?.get(1) ?: throw AssertionError("Could not find updatedAt in existing revision")
+        }
     }
 
     // ===== DELETE /{namespace}/{id}/{version} Tests =====
@@ -115,7 +134,9 @@ class WorkflowDeleteAPIContractTest {
             .statusCode(201)
 
         // Activate it
+        val updatedAt = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAt)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
@@ -157,14 +178,18 @@ class WorkflowDeleteAPIContractTest {
         .then()
             .statusCode(201)
 
+        val updatedAtBeforeActivate = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeActivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
             .statusCode(200)
 
         // Deactivate it
+        val updatedAtBeforeDeactivate = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeDeactivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/deactivate")
         .then()
@@ -332,7 +357,9 @@ class WorkflowDeleteAPIContractTest {
         }
 
         // Activate version 1
+        val updatedAtV1 = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtV1)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
@@ -395,7 +422,9 @@ class WorkflowDeleteAPIContractTest {
             }
 
             // Activate each revision
+            val updatedAt = getExistingUpdatedAt(namespace, id, version)
             RestAssured.given()
+                .header("X-Current-Updated-At", updatedAt)
             .`when`()
                 .post("$WORKFLOW_ENDPOINT/$namespace/$id/$version/activate")
             .then()
@@ -404,7 +433,9 @@ class WorkflowDeleteAPIContractTest {
 
         // Deactivate all revisions
         for (version in 1..2) {
+            val updatedAt = getExistingUpdatedAt(namespace, id, version)
             RestAssured.given()
+                .header("X-Current-Updated-At", updatedAt)
             .`when`()
                 .post("$WORKFLOW_ENDPOINT/$namespace/$id/$version/deactivate")
             .then()

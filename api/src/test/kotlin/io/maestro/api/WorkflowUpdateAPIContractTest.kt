@@ -7,8 +7,10 @@ import io.restassured.http.ContentType
 import jakarta.inject.Inject
 import org.hamcrest.CoreMatchers
 import org.jdbi.v3.core.Jdbi
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 /**
  * Contract tests for workflow revision update endpoint.
@@ -18,6 +20,9 @@ import org.junit.jupiter.api.Test
  * - Rejecting updates to active revisions (409 Conflict)
  * - Validating namespace/id/version match between URL and YAML
  * - Error cases (404 Not Found for non-existent revisions)
+ * - Optimistic locking using updatedAt field (T099)
+ * - Concurrent update conflict detection (409 Conflict)
+ * - Sequential updates with proper timestamp tracking
  */
 @QuarkusTest
 class WorkflowUpdateAPIContractTest {
@@ -27,25 +32,65 @@ class WorkflowUpdateAPIContractTest {
 
     @BeforeEach
     fun cleanupDatabase() {
-        // Delete all workflow revisions before each test to ensure test isolation
+        // Truncate all workflow revisions before each test to ensure test isolation
+        // TRUNCATE is faster than DELETE and resets the table completely
         jdbi.useHandle<Exception> { handle ->
-            handle.execute("DELETE FROM workflow_revisions")
+            handle.execute("TRUNCATE TABLE workflow_revisions RESTART IDENTITY CASCADE")
+        }
+    }
+    
+    @AfterEach
+    fun cleanupAfterTest() {
+        // Also cleanup after each test to ensure no data leaks between tests
+        jdbi.useHandle<Exception> { handle ->
+            handle.execute("TRUNCATE TABLE workflow_revisions RESTART IDENTITY CASCADE")
         }
     }
 
     companion object {
         private const val WORKFLOW_ENDPOINT = "/api/workflows"
 
-        private fun createWorkflowYaml(namespace: String, id: String, message: String = "Test message"): String {
-            return """
-                namespace: $namespace
-                id: $id
-                name: Test Workflow
-                description: Test description
-                steps:
-                  - type: LogTask
-                    message: "$message"
-            """.trimIndent()
+        private fun createWorkflowYaml(
+            namespace: String,
+            id: String,
+            version: Int? = null,
+            message: String = "Test message",
+            updatedAt: String? = null
+        ): String {
+            val versionLine = if (version != null) "version: $version" else ""
+            val updatedAtLine = if (updatedAt != null) "updatedAt: $updatedAt" else ""
+
+            val lines = mutableListOf<String>()
+            lines.add("namespace: $namespace")
+            lines.add("id: $id")
+            if (versionLine.isNotEmpty()) lines.add(versionLine)
+            if (updatedAtLine.isNotEmpty()) lines.add(updatedAtLine)
+            lines.add("name: Test Workflow")
+            lines.add("description: Test description")
+            lines.add("steps:")
+            lines.add("  - type: LogTask")
+            lines.add("    message: \"$message\"")
+
+            return lines.joinToString("\n")
+        }
+
+        /**
+         * Fetches the existing revision and extracts its updatedAt for optimistic locking.
+         */
+        private fun getExistingUpdatedAt(namespace: String, id: String, version: Int): String {
+            val existingRevisionYaml = RestAssured.given()
+                .accept("application/yaml")
+            .`when`()
+                .get("$WORKFLOW_ENDPOINT/$namespace/$id/$version")
+            .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString()
+
+            val updatedAtRegex = Regex("""updatedAt:\s*([^\s\n]+)""")
+            val updatedAtMatch = updatedAtRegex.find(existingRevisionYaml)
+            return updatedAtMatch?.groupValues?.get(1) ?: throw AssertionError("Could not find updatedAt in existing revision")
         }
     }
 
@@ -55,7 +100,7 @@ class WorkflowUpdateAPIContractTest {
     fun `should update an inactive revision successfully`() {
         val namespace = "test-ns-update"
         val id = "workflow-update"
-        val initialYaml = createWorkflowYaml(namespace, id, "Original message")
+        val initialYaml = createWorkflowYaml(namespace, id, message = "Original message")
 
         // Create workflow (starts as inactive)
         RestAssured.given()
@@ -69,11 +114,15 @@ class WorkflowUpdateAPIContractTest {
         .then()
             .statusCode(201)
 
-        // Update the inactive revision with new content
+        // Get existing updatedAt for optimistic locking
+        val existingUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        // Update the inactive revision with new content (including updatedAt for optimistic locking)
         val updatedYaml = """
             namespace: $namespace
             id: $id
             version: 1
+            updatedAt: $existingUpdatedAt
             name: Updated Workflow
             description: Updated description
             steps:
@@ -123,7 +172,7 @@ class WorkflowUpdateAPIContractTest {
     fun `should return 409 when updating an active revision`() {
         val namespace = "test-ns-update-active"
         val id = "workflow-update-active"
-        val initialYaml = createWorkflowYaml(namespace, id, "Original")
+        val initialYaml = createWorkflowYaml(namespace, id, message = "Original")
 
         // Create and activate workflow
         RestAssured.given()
@@ -137,8 +186,10 @@ class WorkflowUpdateAPIContractTest {
         .then()
             .statusCode(201)
 
-        // Activate it
+        // Activate it (with optimistic locking header)
+        val updatedAtBeforeActivation = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeActivation)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
@@ -217,11 +268,15 @@ class WorkflowUpdateAPIContractTest {
         .then()
             .statusCode(201)
 
+        // Get existing updatedAt for optimistic locking
+        val existingUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
         // Try to update with DIFFERENT namespace in YAML
         val updatedYaml = """
             namespace: different-namespace
             id: $id
             version: 1
+            updatedAt: $existingUpdatedAt
             name: Test
             description: Test
             steps:
@@ -262,11 +317,15 @@ class WorkflowUpdateAPIContractTest {
         .then()
             .statusCode(201)
 
+        // Get existing updatedAt for optimistic locking
+        val existingUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
         // Try to update with DIFFERENT id in YAML
         val updatedYaml = """
             namespace: $namespace
             id: different-id
             version: 1
+            updatedAt: $existingUpdatedAt
             name: Test
             description: Test
             steps:
@@ -307,11 +366,15 @@ class WorkflowUpdateAPIContractTest {
         .then()
             .statusCode(201)
 
+        // Get existing updatedAt for optimistic locking
+        val existingUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
         // Try to update with DIFFERENT version in YAML
         val updatedYaml = """
             namespace: $namespace
             id: $id
             version: 99
+            updatedAt: $existingUpdatedAt
             name: Test
             description: Test
             steps:
@@ -338,7 +401,7 @@ class WorkflowUpdateAPIContractTest {
     fun `should allow update after deactivation`() {
         val namespace = "test-ns-update-after-deactivate"
         val id = "workflow-update-after-deactivate"
-        val initialYaml = createWorkflowYaml(namespace, id, "Original")
+        val initialYaml = createWorkflowYaml(namespace, id, message = "Original")
 
         // Create and activate workflow
         RestAssured.given()
@@ -352,24 +415,32 @@ class WorkflowUpdateAPIContractTest {
         .then()
             .statusCode(201)
 
+        val updatedAtBeforeActivation = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeActivation)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
             .statusCode(200)
 
-        // Deactivate it
+        // Deactivate it (this will update the updatedAt timestamp)
+        val updatedAtBeforeDeactivation = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeDeactivation)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/deactivate")
         .then()
             .statusCode(200)
 
-        // Now update should work
+        // Get existing updatedAt for optimistic locking (after deactivation)
+        val existingUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        // Now update the deactivated revision (should work now)
         val updatedYaml = """
             namespace: $namespace
             id: $id
             version: 1
+            updatedAt: $existingUpdatedAt
             name: Updated after deactivation
             description: This should work now
             steps:
@@ -406,10 +477,10 @@ class WorkflowUpdateAPIContractTest {
     fun `should preserve immutable fields when updating`() {
         val namespace = "test-ns-preserve"
         val id = "workflow-preserve"
-        val initialYaml = createWorkflowYaml(namespace, id, "Original")
+        val initialYaml = createWorkflowYaml(namespace, id, message = "Original")
 
         // Create workflow
-        val createResponse = RestAssured.given()
+        RestAssured.given()
             .config(RestAssured.config().encoderConfig(
                 EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
             ))
@@ -423,24 +494,18 @@ class WorkflowUpdateAPIContractTest {
             .body()
             .asString()
 
-        // Get the original content to compare timestamps
-        val originalContent = RestAssured.given()
-        .`when`()
-            .get("$WORKFLOW_ENDPOINT/$namespace/$id/1")
-        .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString()
-
         // Wait a bit to ensure timestamp difference
         Thread.sleep(100)
+
+        // Get existing updatedAt for optimistic locking
+        val existingUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
 
         // Update the revision
         val updatedYaml = """
             namespace: $namespace
             id: $id
             version: 1
+            updatedAt: $existingUpdatedAt
             name: Updated
             description: Updated
             steps:
@@ -480,5 +545,232 @@ class WorkflowUpdateAPIContractTest {
 
         // Verify content was actually updated
         assert(updatedContent.contains("Updated")) { "Content should be updated" }
+    }
+
+    // ===== Optimistic Locking Tests =====
+
+    @Test
+    fun `should detect concurrent update conflict using updatedAt field`() {
+        val namespace = "concurrent-ns"
+        val id = "workflow-concurrent"
+
+        // Step 1: Create initial workflow revision (version 1)
+        val initialYaml = createWorkflowYaml(namespace, id, message = "Initial")
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(initialYaml)
+        .`when`()
+            .post(WORKFLOW_ENDPOINT)
+        .then()
+            .statusCode(201)
+
+        // Step 2: User A reads the revision and extracts updatedAt
+        val userAUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        // Step 3: User B reads the revision (gets same updatedAt)
+        val userBUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        // Verify both users read the same revision state
+        assert(userAUpdatedAt == userBUpdatedAt) {
+            "Both users should have the same updatedAt timestamp initially"
+        }
+
+        // Step 4: User A updates the revision first (should succeed)
+        // Include the updatedAt from their read in the YAML
+        val userAUpdateYaml = createWorkflowYaml(
+            namespace, id, version = 1,
+            message = "User A update",
+            updatedAt = userAUpdatedAt  // Include updatedAt in YAML body
+        )
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(userAUpdateYaml)
+        .`when`()
+            .put("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)  // Success - no conflict
+
+        // Step 5: User B tries to update using stale timestamp in YAML (should fail with 409 Conflict)
+        val userBUpdateYaml = createWorkflowYaml(
+            namespace, id, version = 1,
+            message = "User B update",
+            updatedAt = userBUpdatedAt  // Stale updatedAt (same as User A had initially)
+        )
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(userBUpdateYaml)
+        .`when`()
+            .put("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(409)  // Conflict - optimistic lock failure
+            .contentType(CoreMatchers.containsString("application/problem+json"))
+            .body("type", CoreMatchers.equalTo("https://maestro.io/problems/optimistic-lock-conflict"))
+            .body("title", CoreMatchers.equalTo("Optimistic Lock Conflict"))
+            .body("status", CoreMatchers.equalTo(409))
+            .body("detail", CoreMatchers.containsString("has been modified by another user"))
+            .body("detail", CoreMatchers.containsString("Expected updatedAt"))
+            .body("detail", CoreMatchers.containsString("Actual updatedAt"))
+    }
+
+    @Test
+    fun `should allow sequential updates with correct timestamps`() {
+        val namespace = "sequential-ns"
+        val id = "workflow-sequential"
+
+        // Create initial workflow
+        val initialYaml = createWorkflowYaml(namespace, id, message = "V1")
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(initialYaml)
+        .`when`()
+            .post(WORKFLOW_ENDPOINT)
+        .then()
+            .statusCode(201)
+
+        // Update 1: Get current updatedAt and update
+        var currentUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        val update1Yaml = createWorkflowYaml(
+            namespace, id, version = 1,
+            message = "V2",
+            updatedAt = currentUpdatedAt  // Include updatedAt in YAML body
+        )
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(update1Yaml)
+        .`when`()
+            .put("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)
+
+        // Small delay to ensure first update is fully persisted
+        Thread.sleep(50)
+
+        // Update 2: Get fresh updatedAt and update again
+        currentUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        val update2Yaml = createWorkflowYaml(
+            namespace, id, version = 1,
+            message = "V3",
+            updatedAt = currentUpdatedAt  // Include fresh updatedAt in YAML body
+        )
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(update2Yaml)
+        .`when`()
+            .put("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)  // Both sequential updates should succeed
+
+        // Verify final state
+        val finalYaml = RestAssured.given()
+        .`when`()
+            .get("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString()
+
+        // Verify the message was updated to V3
+        assert(finalYaml.contains("message: \"V3\"")) { "Final message should be V3" }
+    }
+
+    @Test
+    fun `should update updatedAt timestamp after successful update`() {
+        val namespace = "timestamp-ns"
+        val id = "workflow-timestamp"
+
+        // Create workflow
+        val initialYaml = createWorkflowYaml(namespace, id, message = "Initial")
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(initialYaml)
+        .`when`()
+            .post(WORKFLOW_ENDPOINT)
+        .then()
+            .statusCode(201)
+
+        // Get initial timestamps (API only returns YAML, so parse YAML string)
+        val initialStateYaml = RestAssured.given()
+            .accept("application/yaml")
+        .`when`()
+            .get("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString()
+
+        val createdAtRegex = Regex("""createdAt:\s*([^\s\n]+)""")
+        val updatedAtRegex = Regex("""updatedAt:\s*([^\s\n]+)""")
+        val initialCreatedAt = Instant.parse(createdAtRegex.find(initialStateYaml)?.groupValues?.get(1) ?: throw AssertionError("Could not find createdAt"))
+        val initialUpdatedAt = Instant.parse(updatedAtRegex.find(initialStateYaml)?.groupValues?.get(1) ?: throw AssertionError("Could not find updatedAt"))
+
+        // Wait a moment to ensure timestamp difference
+        Thread.sleep(100)
+
+        // Get existing updatedAt for optimistic locking
+        val currentUpdatedAt = getExistingUpdatedAt(namespace, id, 1)
+
+        // Update the workflow with updatedAt for optimistic locking
+        val updatedYaml = createWorkflowYaml(
+            namespace, id, version = 1,
+            message = "Updated",
+            updatedAt = currentUpdatedAt
+        )
+        RestAssured.given()
+            .config(RestAssured.config().encoderConfig(
+                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+            ))
+            .contentType("application/yaml")
+            .body(updatedYaml)
+        .`when`()
+            .put("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)
+
+        // Get updated timestamps (API only returns YAML, so parse YAML string)
+        val updatedStateYaml = RestAssured.given()
+            .accept("application/yaml")
+        .`when`()
+            .get("$WORKFLOW_ENDPOINT/$namespace/$id/1")
+        .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString()
+
+        val finalCreatedAt = Instant.parse(createdAtRegex.find(updatedStateYaml)?.groupValues?.get(1) ?: throw AssertionError("Could not find createdAt"))
+        val finalUpdatedAt = Instant.parse(updatedAtRegex.find(updatedStateYaml)?.groupValues?.get(1) ?: throw AssertionError("Could not find updatedAt"))
+
+        // Verify: createdAt unchanged, updatedAt changed
+        assert(initialCreatedAt == finalCreatedAt) {
+            "createdAt should remain unchanged"
+        }
+        assert(finalUpdatedAt.isAfter(initialUpdatedAt)) {
+            "updatedAt should be updated to a later timestamp"
+        }
     }
 }

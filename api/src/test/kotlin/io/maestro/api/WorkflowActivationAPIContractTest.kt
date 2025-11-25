@@ -48,6 +48,25 @@ class WorkflowActivationAPIContractTest {
                     message: "$message"
             """.trimIndent()
         }
+
+        /**
+         * Fetches the existing revision and extracts its updatedAt for optimistic locking.
+         */
+        private fun getExistingUpdatedAt(namespace: String, id: String, version: Int): String {
+            val existingRevisionYaml = RestAssured.given()
+                .accept("application/yaml")
+            .`when`()
+                .get("$WORKFLOW_ENDPOINT/$namespace/$id/$version")
+            .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString()
+
+            val updatedAtRegex = Regex("""updatedAt:\s*([^\s\n]+)""")
+            val updatedAtMatch = updatedAtRegex.find(existingRevisionYaml)
+            return updatedAtMatch?.groupValues?.get(1) ?: throw AssertionError("Could not find updatedAt in existing revision")
+        }
     }
 
     // ===== POST /{namespace}/{id}/{version}/activate Tests =====
@@ -71,7 +90,9 @@ class WorkflowActivationAPIContractTest {
             .statusCode(201)
 
         // Activate the revision
+        val updatedAt = getExistingUpdatedAt(namespace, id, 1)
         val response = RestAssured.given()
+            .header("X-Current-Updated-At", updatedAt)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
@@ -90,8 +111,18 @@ class WorkflowActivationAPIContractTest {
     }
 
     @Test
+    fun `should return 400 when activating without header`() {
+        RestAssured.given()
+        .`when`()
+            .post("$WORKFLOW_ENDPOINT/non-existent-ns/non-existent-id/1/activate")
+        .then()
+            .statusCode(400)
+    }
+
+    @Test
     fun `should return 404 when activating non-existent revision`() {
         RestAssured.given()
+            .header("X-Current-Updated-At", "2024-01-01T00:00:00Z")
         .`when`()
             .post("$WORKFLOW_ENDPOINT/non-existent-ns/non-existent-id/1/activate")
         .then()
@@ -135,13 +166,17 @@ class WorkflowActivationAPIContractTest {
         }
 
         // Activate versions 1 and 3 (leaving 2 inactive)
+        val updatedAtV1 = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtV1)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
             .statusCode(200)
 
+        val updatedAtV3 = getExistingUpdatedAt(namespace, id, 3)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtV3)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/3/activate")
         .then()
@@ -199,14 +234,18 @@ class WorkflowActivationAPIContractTest {
         .then()
             .statusCode(201)
 
+        val updatedAtBeforeActivate = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeActivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
             .statusCode(200)
 
         // Deactivate the revision
+        val updatedAtBeforeDeactivate = getExistingUpdatedAt(namespace, id, 1)
         val response = RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeDeactivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/deactivate")
         .then()
@@ -222,8 +261,18 @@ class WorkflowActivationAPIContractTest {
     }
 
     @Test
+    fun `should return 400 when deactivating without header`() {
+        RestAssured.given()
+        .`when`()
+            .post("$WORKFLOW_ENDPOINT/non-existent-ns/non-existent-id/1/deactivate")
+        .then()
+            .statusCode(400)
+    }
+
+    @Test
     fun `should return 404 when deactivating non-existent revision`() {
         RestAssured.given()
+            .header("X-Current-Updated-At", "2024-01-01T00:00:00Z")
         .`when`()
             .post("$WORKFLOW_ENDPOINT/non-existent-ns/non-existent-id/1/deactivate")
         .then()
@@ -269,7 +318,9 @@ class WorkflowActivationAPIContractTest {
         }
 
         // Activate only version 2
+        val updatedAtV2 = getExistingUpdatedAt(namespace, id, 2)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtV2)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/2/activate")
         .then()
@@ -356,7 +407,9 @@ class WorkflowActivationAPIContractTest {
             .statusCode(201)
 
         // Step 1: Activate revision
+        val updatedAtBeforeActivate = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeActivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
@@ -378,7 +431,9 @@ class WorkflowActivationAPIContractTest {
         }
 
         // Step 2: Deactivate revision
+        val updatedAtBeforeDeactivate = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeDeactivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/deactivate")
         .then()
@@ -393,7 +448,9 @@ class WorkflowActivationAPIContractTest {
             .statusCode(404) // No active revisions
 
         // Step 3: Reactivate
+        val updatedAtBeforeReactivate = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
+            .header("X-Current-Updated-At", updatedAtBeforeReactivate)
         .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
         .then()
