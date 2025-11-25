@@ -1,0 +1,760 @@
+openapi: 3.1.0
+info:
+  title: Maestro Workflow Execution API
+  version: 1.0.0
+  description: |
+    API for executing workflows and querying execution status in the Maestro orchestration system.
+
+    This API enables:
+    - Triggering workflow execution with typed input parameters
+    - Querying execution status and step results
+    - Retrieving execution history for workflows
+
+    All errors follow RFC 7807 Problem Details format.
+  contact:
+    name: Maestro API Support
+  license:
+    name: Apache 2.0
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+  - url: https://api.maestro.io/api
+    description: Production server
+
+tags:
+  - name: Workflow Execution
+    description: Operations for executing workflows and querying execution state
+
+paths:
+  /workflows/{namespace}/{id}/{version}/execute:
+    post:
+      tags:
+        - Workflow Execution
+      summary: Execute a workflow revision
+      description: |
+        Triggers synchronous execution of a workflow revision with provided input parameters.
+
+        - Validates parameters against workflow revision schema (FR-002, FR-003, FR-004)
+        - Executes all workflow steps sequentially (FR-005)
+        - Persists execution state in real-time (FR-006, FR-007, FR-008)
+        - Returns execution ID for status queries (FR-011)
+
+        Success Criteria:
+        - SC-001: Returns execution ID in under 2 seconds
+        - SC-004: Parameter validation completes in under 500ms
+      operationId: executeWorkflow
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - $ref: '#/components/parameters/WorkflowId'
+        - $ref: '#/components/parameters/Version'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionRequest'
+            examples:
+              simpleExecution:
+                summary: Execute workflow with string and integer parameters
+                value:
+                  parameters:
+                    userName: "alice"
+                    retryCount: 3
+                    enableDebug: true
+              noParameters:
+                summary: Execute workflow without parameters
+                value:
+                  parameters: {}
+      responses:
+        '200':
+          description: Workflow execution started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+              examples:
+                success:
+                  value:
+                    executionId: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                    status: "RUNNING"
+                    revisionId:
+                      namespace: "production"
+                      id: "payment-processing"
+                      version: 3
+                    inputParameters:
+                      userName: "alice"
+                      retryCount: 3
+                      enableDebug: true
+                    startedAt: "2025-11-25T10:30:00Z"
+                    _links:
+                      self:
+                        href: "/api/executions/018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                      workflow:
+                        href: "/api/workflows/production/payment-processing/3"
+        '400':
+          description: Parameter validation failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              examples:
+                validationError:
+                  value:
+                    type: "https://maestro.io/problems/workflow-parameter-validation-error"
+                    title: "Workflow Parameter Validation Failed"
+                    status: 400
+                    detail: "2 parameter validation errors occurred"
+                    instance: "/api/workflows/production/payment-processing/3/execute"
+                    timestamp: "2025-11-25T10:30:00Z"
+                    invalidParams:
+                      - name: "retryCount"
+                        reason: "must be a positive integer"
+                        provided: "invalid"
+                      - name: "userName"
+                        reason: "required parameter missing"
+                        provided: null
+        '404':
+          description: Workflow revision not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              examples:
+                notFound:
+                  value:
+                    type: "https://maestro.io/problems/workflow-not-found"
+                    title: "Workflow Revision Not Found"
+                    status: 404
+                    detail: "Workflow revision production:payment-processing:3 does not exist"
+                    instance: "/api/workflows/production/payment-processing/3/execute"
+                    timestamp: "2025-11-25T10:30:00Z"
+        '500':
+          description: Internal server error during execution
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /executions/{executionId}:
+    get:
+      tags:
+        - Workflow Execution
+      summary: Get execution status and details
+      description: |
+        Retrieves complete execution details including overall status, input parameters,
+        and all step results.
+
+        - Returns execution log with step-by-step results (FR-009, FR-010)
+        - Includes timing information for each step (FR-010)
+        - Shows error details for failed executions (FR-012)
+
+        Success Criteria:
+        - SC-003: Returns results in under 1 second
+      operationId: getExecutionStatus
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          description: Execution ID (UUID v7 in hex format without hyphens)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+            example: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+      responses:
+        '200':
+          description: Execution details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionDetailResponse'
+              examples:
+                completedExecution:
+                  value:
+                    executionId: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                    status: "COMPLETED"
+                    revisionId:
+                      namespace: "production"
+                      id: "payment-processing"
+                      version: 3
+                    inputParameters:
+                      userName: "alice"
+                      retryCount: 3
+                    startedAt: "2025-11-25T10:30:00Z"
+                    completedAt: "2025-11-25T10:30:15Z"
+                    steps:
+                      - stepIndex: 0
+                        stepId: "validate-user"
+                        stepType: "WorkTask"
+                        status: "COMPLETED"
+                        outputData:
+                          userId: "12345"
+                          valid: true
+                        startedAt: "2025-11-25T10:30:00Z"
+                        completedAt: "2025-11-25T10:30:05Z"
+                      - stepIndex: 1
+                        stepId: "process-payment"
+                        stepType: "WorkTask"
+                        status: "COMPLETED"
+                        outputData:
+                          transactionId: "txn_67890"
+                        startedAt: "2025-11-25T10:30:05Z"
+                        completedAt: "2025-11-25T10:30:15Z"
+                    _links:
+                      self:
+                        href: "/api/executions/018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                      workflow:
+                        href: "/api/workflows/production/payment-processing/3"
+                failedExecution:
+                  value:
+                    executionId: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                    status: "FAILED"
+                    errorMessage: "Payment gateway timeout"
+                    revisionId:
+                      namespace: "production"
+                      id: "payment-processing"
+                      version: 3
+                    inputParameters:
+                      userName: "alice"
+                      retryCount: 3
+                    startedAt: "2025-11-25T10:30:00Z"
+                    completedAt: "2025-11-25T10:30:10Z"
+                    steps:
+                      - stepIndex: 0
+                        stepId: "validate-user"
+                        stepType: "WorkTask"
+                        status: "COMPLETED"
+                        outputData:
+                          userId: "12345"
+                          valid: true
+                        startedAt: "2025-11-25T10:30:00Z"
+                        completedAt: "2025-11-25T10:30:05Z"
+                      - stepIndex: 1
+                        stepId: "process-payment"
+                        stepType: "WorkTask"
+                        status: "FAILED"
+                        errorMessage: "Connection timeout after 5 seconds"
+                        errorDetails:
+                          errorType: "TimeoutException"
+                          stackTrace: "java.net.SocketTimeoutException..."
+                        startedAt: "2025-11-25T10:30:05Z"
+                        completedAt: "2025-11-25T10:30:10Z"
+                      - stepIndex: 2
+                        stepId: "send-confirmation"
+                        stepType: "WorkTask"
+                        status: "SKIPPED"
+                    _links:
+                      self:
+                        href: "/api/executions/018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                      workflow:
+                        href: "/api/workflows/production/payment-processing/3"
+        '404':
+          description: Execution not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /workflows/{namespace}/{id}/executions:
+    get:
+      tags:
+        - Workflow Execution
+      summary: Get execution history for a workflow
+      description: |
+        Retrieves execution history for all revisions of a workflow, sorted by most recent first.
+
+        - Returns paginated list of executions (FR-013)
+        - Supports filtering by revision version
+        - Includes summary information for each execution
+
+        Success Criteria:
+        - SC-006: Returns executions up to 90 days old
+      operationId: getExecutionHistory
+      parameters:
+        - $ref: '#/components/parameters/Namespace'
+        - $ref: '#/components/parameters/WorkflowId'
+        - name: version
+          in: query
+          required: false
+          description: Filter by specific workflow revision version
+          schema:
+            type: integer
+            minimum: 1
+          example: 3
+        - name: status
+          in: query
+          required: false
+          description: Filter by execution status
+          schema:
+            type: string
+            enum: [PENDING, RUNNING, COMPLETED, FAILED, CANCELLED]
+          example: "FAILED"
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of executions to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          description: Number of executions to skip (for pagination)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Execution history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionHistoryResponse'
+              examples:
+                historyList:
+                  value:
+                    executions:
+                      - executionId: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+                        status: "COMPLETED"
+                        revisionVersion: 3
+                        startedAt: "2025-11-25T10:30:00Z"
+                        completedAt: "2025-11-25T10:30:15Z"
+                        stepCount: 5
+                        completedSteps: 5
+                        failedSteps: 0
+                      - executionId: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c3b"
+                        status: "FAILED"
+                        errorMessage: "Payment gateway timeout"
+                        revisionVersion: 3
+                        startedAt: "2025-11-25T10:25:00Z"
+                        completedAt: "2025-11-25T10:25:10Z"
+                        stepCount: 5
+                        completedSteps: 2
+                        failedSteps: 1
+                    pagination:
+                      total: 47
+                      limit: 20
+                      offset: 0
+                      hasMore: true
+                    _links:
+                      self:
+                        href: "/api/workflows/production/payment-processing/executions?limit=20&offset=0"
+                      next:
+                        href: "/api/workflows/production/payment-processing/executions?limit=20&offset=20"
+                      workflow:
+                        href: "/api/workflows/production/payment-processing"
+        '404':
+          description: Workflow not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+components:
+  parameters:
+    Namespace:
+      name: namespace
+      in: path
+      required: true
+      description: Workflow namespace (e.g., production, staging)
+      schema:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$'
+        minLength: 1
+        maxLength: 255
+      example: "production"
+
+    WorkflowId:
+      name: id
+      in: path
+      required: true
+      description: Workflow identifier
+      schema:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]*[a-z0-9]$'
+        minLength: 1
+        maxLength: 255
+      example: "payment-processing"
+
+    Version:
+      name: version
+      in: path
+      required: true
+      description: Workflow revision version number
+      schema:
+        type: integer
+        minimum: 1
+      example: 3
+
+  schemas:
+    ExecutionRequest:
+      type: object
+      required:
+        - parameters
+      properties:
+        parameters:
+          type: object
+          description: Input parameters as key-value pairs (validated against workflow revision schema)
+          additionalProperties: true
+          example:
+            userName: "alice"
+            retryCount: 3
+            enableDebug: true
+
+    ExecutionResponse:
+      type: object
+      required:
+        - executionId
+        - status
+        - revisionId
+        - inputParameters
+        - startedAt
+        - _links
+      properties:
+        executionId:
+          type: string
+          description: Unique execution identifier (UUID v7)
+          pattern: '^[0-9a-f]{32}$'
+          example: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        revisionId:
+          $ref: '#/components/schemas/WorkflowRevisionId'
+        inputParameters:
+          type: object
+          additionalProperties: true
+          description: Input parameters provided for execution
+        startedAt:
+          type: string
+          format: date-time
+          description: Execution start timestamp (ISO 8601)
+          example: "2025-11-25T10:30:00Z"
+        _links:
+          $ref: '#/components/schemas/ExecutionLinks'
+
+    ExecutionDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/ExecutionResponse'
+        - type: object
+          properties:
+            completedAt:
+              type: string
+              format: date-time
+              description: Execution completion timestamp (null if still running)
+              nullable: true
+              example: "2025-11-25T10:30:15Z"
+            errorMessage:
+              type: string
+              description: Human-readable error message (present only if status = FAILED)
+              nullable: true
+              example: "Payment gateway timeout"
+            steps:
+              type: array
+              description: Execution results for each workflow step
+              items:
+                $ref: '#/components/schemas/StepResult'
+
+    StepResult:
+      type: object
+      required:
+        - stepIndex
+        - stepId
+        - stepType
+        - status
+        - startedAt
+        - completedAt
+      properties:
+        stepIndex:
+          type: integer
+          description: Step position in execution sequence (0-based)
+          minimum: 0
+          example: 0
+        stepId:
+          type: string
+          description: Step identifier from workflow definition
+          example: "validate-user"
+        stepType:
+          type: string
+          description: Step type name
+          enum: [Sequence, If, WorkTask, LogTask]
+          example: "WorkTask"
+        status:
+          $ref: '#/components/schemas/StepStatus'
+        inputData:
+          type: object
+          additionalProperties: true
+          description: Step input context at execution time
+          nullable: true
+        outputData:
+          type: object
+          additionalProperties: true
+          description: Step output/return value (null for failed or skipped steps)
+          nullable: true
+        errorMessage:
+          type: string
+          description: Human-readable error message (present only if status = FAILED)
+          nullable: true
+        errorDetails:
+          $ref: '#/components/schemas/ErrorInfo'
+        startedAt:
+          type: string
+          format: date-time
+          description: Step execution start time
+          example: "2025-11-25T10:30:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          description: Step execution completion time
+          example: "2025-11-25T10:30:05Z"
+
+    ErrorInfo:
+      type: object
+      description: Detailed error information for failed steps
+      nullable: true
+      properties:
+        errorType:
+          type: string
+          description: Exception class name
+          example: "TimeoutException"
+        stackTrace:
+          type: string
+          description: Full stack trace for debugging
+          example: "java.net.SocketTimeoutException: timeout\n  at ..."
+        stepInputs:
+          type: object
+          additionalProperties: true
+          description: Input values that caused the error
+
+    ExecutionHistoryResponse:
+      type: object
+      required:
+        - executions
+        - pagination
+        - _links
+      properties:
+        executions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        _links:
+          $ref: '#/components/schemas/HistoryLinks'
+
+    ExecutionSummary:
+      type: object
+      required:
+        - executionId
+        - status
+        - revisionVersion
+        - startedAt
+        - stepCount
+        - completedSteps
+        - failedSteps
+      properties:
+        executionId:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          example: "018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        errorMessage:
+          type: string
+          nullable: true
+          description: Error message if status = FAILED
+        revisionVersion:
+          type: integer
+          description: Workflow revision version that was executed
+          example: 3
+        startedAt:
+          type: string
+          format: date-time
+          example: "2025-11-25T10:30:00Z"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-11-25T10:30:15Z"
+        stepCount:
+          type: integer
+          description: Total number of steps in workflow
+          example: 5
+        completedSteps:
+          type: integer
+          description: Number of steps that completed successfully
+          example: 5
+        failedSteps:
+          type: integer
+          description: Number of steps that failed
+          example: 0
+
+    WorkflowRevisionId:
+      type: object
+      required:
+        - namespace
+        - id
+        - version
+      properties:
+        namespace:
+          type: string
+          example: "production"
+        id:
+          type: string
+          example: "payment-processing"
+        version:
+          type: integer
+          minimum: 1
+          example: 3
+
+    ExecutionStatus:
+      type: string
+      enum:
+        - PENDING
+        - RUNNING
+        - COMPLETED
+        - FAILED
+        - CANCELLED
+      description: |
+        Execution status:
+        - PENDING: Execution created but not yet started
+        - RUNNING: Execution in progress
+        - COMPLETED: All steps completed successfully
+        - FAILED: Execution failed due to step error or timeout
+        - CANCELLED: Execution cancelled by user (future enhancement)
+
+    StepStatus:
+      type: string
+      enum:
+        - PENDING
+        - RUNNING
+        - COMPLETED
+        - FAILED
+        - SKIPPED
+      description: |
+        Step status:
+        - PENDING: Step not yet executed
+        - RUNNING: Step currently executing
+        - COMPLETED: Step completed successfully
+        - FAILED: Step failed with error
+        - SKIPPED: Step not executed due to earlier failure
+
+    Pagination:
+      type: object
+      required:
+        - total
+        - limit
+        - offset
+        - hasMore
+      properties:
+        total:
+          type: integer
+          description: Total number of executions matching filter
+          example: 47
+        limit:
+          type: integer
+          description: Maximum number of results per page
+          example: 20
+        offset:
+          type: integer
+          description: Number of results skipped
+          example: 0
+        hasMore:
+          type: boolean
+          description: Whether more results are available
+          example: true
+
+    ExecutionLinks:
+      type: object
+      required:
+        - self
+        - workflow
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        workflow:
+          $ref: '#/components/schemas/Link'
+
+    HistoryLinks:
+      type: object
+      required:
+        - self
+        - workflow
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        next:
+          $ref: '#/components/schemas/Link'
+        workflow:
+          $ref: '#/components/schemas/Link'
+
+    Link:
+      type: object
+      required:
+        - href
+      properties:
+        href:
+          type: string
+          format: uri-reference
+          example: "/api/executions/018c9c6c8c7a7b3e9f4a2d1e5f8b3c4d"
+
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference identifying the problem type
+          example: "https://maestro.io/problems/workflow-parameter-validation-error"
+        title:
+          type: string
+          description: Short, human-readable summary of the problem
+          example: "Workflow Parameter Validation Failed"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+          example: "2 parameter validation errors occurred"
+        instance:
+          type: string
+          format: uri-reference
+          description: URI reference identifying the specific occurrence
+          example: "/api/workflows/production/payment-processing/3/execute"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2025-11-25T10:30:00Z"
+        invalidParams:
+          type: array
+          description: List of parameter validation errors
+          items:
+            type: object
+            required:
+              - name
+              - reason
+            properties:
+              name:
+                type: string
+                description: Parameter name that failed validation
+                example: "retryCount"
+              reason:
+                type: string
+                description: Why validation failed
+                example: "must be a positive integer"
+              provided:
+                description: The value that was provided
+                nullable: true
+                example: "invalid"
+
+security: []
