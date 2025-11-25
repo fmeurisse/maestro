@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface YamlEditorProps {
   value: string
@@ -20,25 +20,31 @@ export function YamlEditor({
 }: YamlEditorProps) {
   const [isValid, setIsValid] = useState(true)
 
+  // simple validation helper reused on change and on mount/value updates
+  const validate = (val: string) => {
+    try {
+      const openBraces = (val.match(/{/g) || []).length
+      const closeBraces = (val.match(/}/g) || []).length
+      const openBrackets = (val.match(/\[/g) || []).length
+      const closeBrackets = (val.match(/\]/g) || []).length
+
+      return openBraces === closeBraces && openBrackets === closeBrackets
+    } catch {
+      return false
+    }
+  }
+
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
       onChange(value)
-      // Basic YAML validation (Monaco handles syntax highlighting)
-      try {
-        // Simple check: YAML shouldn't have unmatched brackets/braces
-        const openBraces = (value.match(/{/g) || []).length
-        const closeBraces = (value.match(/}/g) || []).length
-        const openBrackets = (value.match(/\[/g) || []).length
-        const closeBrackets = (value.match(/\]/g) || []).length
-
-        setIsValid(
-          openBraces === closeBraces && openBrackets === closeBrackets
-        )
-      } catch {
-        setIsValid(false)
-      }
+      setIsValid(validate(value))
     }
   }
+
+  // Validate when the initial value is provided or whenever it changes
+  useEffect(() => {
+    setIsValid(validate(value))
+  }, [value])
 
   return (
     <div className="yaml-editor">

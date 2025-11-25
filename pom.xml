@@ -65,7 +65,7 @@
         <module>core</module>
         <module>api</module>
         <module>plugins/postgres</module>
-        <!--    <module>ui</module>-->
+        <module>ui</module>
     </modules>
 
     <!-- ==================================================================================== -->

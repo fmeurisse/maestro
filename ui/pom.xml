@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>ui</artifactId>
-    <name>ui</name>
+    <name>Maestro :: UI WebApp</name>
     <description>UI module</description>
 
     <dependencies>
