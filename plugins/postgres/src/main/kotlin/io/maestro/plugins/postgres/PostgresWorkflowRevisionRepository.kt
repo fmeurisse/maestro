@@ -1,6 +1,7 @@
 package io.maestro.plugins.postgres
 
 import io.maestro.core.WorkflowJsonParser
+import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.maestro.core.errors.ActiveRevisionConflictException
 import io.maestro.core.errors.WorkflowAlreadyExistsException
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
@@ -344,8 +345,14 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
 
             val current = jsonParser.parseRevision(currentJson, validate = false)
 
-            // Update active flag
-            val updatedRevision = current.activate()
+            // Extract the updatedAt timestamp from the YAML source to ensure consistency
+            val updatedAt = WorkflowYamlMetadataUpdater.requireUpdatedAt(updatedYamlSource)
+
+            // Enforce active=true in YAML regardless of input
+            val enforcedYamlSource = WorkflowYamlMetadataUpdater.updateActive(updatedYamlSource, true)
+
+            // Update active flag with the timestamp from the YAML
+            val updatedRevision = current.activate(updatedAt)
             val revisionJson = jsonParser.toJson(updatedRevision)
 
             // Update both revision_data and yaml_source
@@ -356,14 +363,14 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 WHERE namespace = :namespace AND id = :id AND version = :version
             """.trimIndent())
                 .bind("revisionData", revisionJson)
-                .bind("yamlSource", updatedYamlSource)
+                .bind("yamlSource", enforcedYamlSource)
                 .bind("namespace", id.namespace)
                 .bind("id", id.id)
                 .bind("version", id.version)
                 .execute()
 
             logger.debug { "Successfully activated workflow revision: $id" }
-            WorkflowRevisionWithSource.fromRevision(updatedRevision, updatedYamlSource)
+            WorkflowRevisionWithSource.fromRevision(updatedRevision, enforcedYamlSource)
         }
     }
 
@@ -386,8 +393,14 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
 
             val current = jsonParser.parseRevision(currentJson, validate = false)
 
-            // Update active flag
-            val updatedRevision = current.deactivate()
+            // Extract the updatedAt timestamp from the YAML source to ensure consistency
+            val updatedAt = WorkflowYamlMetadataUpdater.requireUpdatedAt(updatedYamlSource)
+
+            // Enforce active=false in YAML regardless of input
+            val enforcedYamlSource = WorkflowYamlMetadataUpdater.updateActive(updatedYamlSource, false)
+
+            // Update active flag with the timestamp from the YAML
+            val updatedRevision = current.deactivate(updatedAt)
             val revisionJson = jsonParser.toJson(updatedRevision)
 
             // Update both revision_data and yaml_source
@@ -398,14 +411,15 @@ class PostgresWorkflowRevisionRepository @Inject constructor(
                 WHERE namespace = :namespace AND id = :id AND version = :version
             """.trimIndent())
                 .bind("revisionData", revisionJson)
-                .bind("yamlSource", updatedYamlSource)
+                .bind("yamlSource", enforcedYamlSource)
                 .bind("namespace", id.namespace)
                 .bind("id", id.id)
                 .bind("version", id.version)
                 .execute()
 
             logger.debug { "Successfully deactivated workflow revision: $id" }
-            WorkflowRevisionWithSource.fromRevision(updatedRevision, updatedYamlSource)
+            WorkflowRevisionWithSource.fromRevision(updatedRevision, enforcedYamlSource)
         }
     }
+
 }

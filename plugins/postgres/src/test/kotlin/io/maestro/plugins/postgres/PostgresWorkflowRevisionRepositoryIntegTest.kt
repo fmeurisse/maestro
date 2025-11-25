@@ -560,7 +560,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             val activated = repository.activateWithSource(revision.revisionId(), updatedYaml)
 
             // Then
-            activated.updatedAt.isAfter(now) shouldBe true
+            activated.updatedAt.shouldNotBeNull().isAfter(now) shouldBe true
         }
 
         scenario("should throw exception when revision does not exist") {
@@ -627,7 +627,7 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
             val deactivated = repository.deactivateWithSource(revision.revisionId(), updatedYaml)
 
             // Then
-            deactivated.updatedAt.isAfter(now) shouldBe true
+            deactivated.updatedAt.shouldNotBeNull().isAfter(now) shouldBe true
         }
 
         scenario("should throw exception when revision does not exist") {
