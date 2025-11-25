@@ -8,11 +8,17 @@ import io.kotest.matchers.throwable.shouldHaveMessage
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionWithSource
 import io.maestro.model.errors.InvalidWorkflowRevisionException
+import io.maestro.model.execution.ExecutionContext
+import io.maestro.model.execution.StepStatus
 import io.maestro.model.steps.Step
 
 class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
 
-    val mockSteps = listOf<Step>(object : Step {})
+    val mockSteps = listOf<Step>(object : Step {
+        override fun execute(context: ExecutionContext): Pair<StepStatus, ExecutionContext> {
+            return Pair(StepStatus.COMPLETED, context)
+        }
+    })
     val yamlSource = """
         namespace: production
         id: workflow-1
@@ -222,7 +228,11 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
                 steps = mockSteps
             )
 
-            val newSteps = listOf<Step>(object : Step {})
+            val newSteps = listOf<Step>(object : Step {
+                override fun execute(context: ExecutionContext): Pair<StepStatus, ExecutionContext> {
+                    return Pair(StepStatus.COMPLETED, context)
+                }
+            })
             val newYaml = "namespace: production\nid: workflow-1\nupdated: true"
             val updated = withSource.updateContent(newYaml, newSteps, "New description")
 
@@ -243,7 +253,11 @@ class WorkflowRevisionWithSourceUnitTest : FeatureSpec({
                 steps = mockSteps
             )
 
-            val newSteps = listOf<Step>(object : Step {})
+            val newSteps = listOf<Step>(object : Step {
+                override fun execute(context: ExecutionContext): Pair<StepStatus, ExecutionContext> {
+                    return Pair(StepStatus.COMPLETED, context)
+                }
+            })
             val newYaml = "updated yaml"
             val updated = withSource.updateContent(newYaml, newSteps, null)
 

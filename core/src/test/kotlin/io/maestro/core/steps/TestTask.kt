@@ -1,5 +1,7 @@
 package io.maestro.core.steps
 
+import io.maestro.model.execution.ExecutionContext
+import io.maestro.model.execution.StepStatus
 import io.maestro.model.steps.Task
 
 /**
@@ -7,8 +9,9 @@ import io.maestro.model.steps.Task
  */
 data class TestTask(val value: String) : Task {
 
-    override fun execute() {
+    override fun execute(context: ExecutionContext): Pair<StepStatus, ExecutionContext> {
         println("Test task executed: $value")
+        return Pair(StepStatus.COMPLETED, context)
     }
 
     companion object {
