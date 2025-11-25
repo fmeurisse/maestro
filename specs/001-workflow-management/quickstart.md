@@ -21,6 +21,99 @@ createdb maestro
 psql maestro < plugins/postgres-repository/src/main/resources/schema/workflow_revisions.sql
 ```
 
+### Understanding the Dual Storage Schema
+
+The workflow_revisions table uses a **dual storage design** for optimal performance and flexibility:
+
+1. **yaml_source (TEXT)**: Preserves the original YAML with formatting and comments
+2. **revision_data (JSONB)**: Stores the complete WorkflowRevision as JSON for efficient querying
+3. **Computed columns**: Auto-generated from JSONB for indexing (namespace, id, version, active, timestamps)
+
+**Schema Structure**:
+```sql
+CREATE TABLE workflow_revisions (
+    -- Original YAML (preserves formatting/comments)
+    yaml_source TEXT NOT NULL,
+
+    -- Parsed structure (efficient querying)
+    revision_data JSONB NOT NULL,
+
+    -- Computed columns (auto-generated from JSONB)
+    namespace VARCHAR(100) GENERATED ALWAYS AS (revision_data->>'namespace') STORED,
+    id VARCHAR(100) GENERATED ALWAYS AS (revision_data->>'id') STORED,
+    version BIGINT GENERATED ALWAYS AS ((revision_data->>'version')::BIGINT) STORED,
+    active BOOLEAN GENERATED ALWAYS AS ((revision_data->>'active')::BOOLEAN) STORED,
+    created_at TIMESTAMP WITH TIME ZONE GENERATED ALWAYS AS
+        ((revision_data->>'createdAt')::TIMESTAMP WITH TIME ZONE) STORED,
+    updated_at TIMESTAMP WITH TIME ZONE GENERATED ALWAYS AS
+        ((revision_data->>'updatedAt')::TIMESTAMP WITH TIME ZONE) STORED,
+
+    PRIMARY KEY (namespace, id, version)
+);
+```
+
+**Benefits**:
+- **YAML Preservation**: Original formatting, comments, and whitespace preserved in TEXT column
+- **Query Performance**: JSONB with computed columns enables fast filtering (WHERE active = true)
+- **Schema Flexibility**: Add fields to JSONB without ALTER TABLE migrations
+- **Consistency**: Computed columns auto-sync with JSONB content
+
+**Example Row**:
+```sql
+-- yaml_source column (TEXT):
+namespace: production
+id: payment-processing
+name: Payment Processing
+description: Handles payment processing
+steps:
+  - type: LogTask
+    message: "Starting"  # This comment is preserved!
+  - type: WorkTask
+    name: process-payment
+
+-- revision_data column (JSONB):
+{
+  "namespace": "production",
+  "id": "payment-processing",
+  "version": 1,
+  "name": "Payment Processing",
+  "description": "Handles payment processing",
+  "steps": [
+    {"type": "LogTask", "message": "Starting"},
+    {"type": "WorkTask", "name": "process-payment", "parameters": {}}
+  ],
+  "active": false,
+  "createdAt": "2025-11-21T10:30:00Z",
+  "updatedAt": "2025-11-21T10:30:00Z"
+}
+
+-- Computed columns (auto-extracted):
+namespace: production  (indexed)
+id: payment-processing  (indexed)
+version: 1  (indexed)
+active: false  (indexed)
+created_at: 2025-11-21 10:30:00+00  (indexed)
+updated_at: 2025-11-21 10:30:00+00  (indexed)
+```
+
+**Query Examples**:
+```sql
+-- Find active revisions (uses computed column index)
+SELECT yaml_source FROM workflow_revisions
+WHERE namespace = 'production'
+  AND id = 'payment-processing'
+  AND active = true;
+
+-- Query step types (uses JSONB GIN index)
+SELECT namespace, id, version FROM workflow_revisions
+WHERE revision_data @> '{"steps": [{"type": "LogTask"}]}';
+
+-- Find workflows modified recently (uses computed column index)
+SELECT DISTINCT namespace, id FROM workflow_revisions
+WHERE updated_at > NOW() - INTERVAL '7 days'
+ORDER BY updated_at DESC;
+```
+
 ## Start the API Server
 
 ```bash
@@ -28,7 +121,17 @@ psql maestro < plugins/postgres-repository/src/main/resources/schema/workflow_re
 mvn quarkus:dev -pl api
 
 # API will be available at http://localhost:8080
+# OpenAPI spec: http://localhost:8080/openapi
+# Swagger UI: http://localhost:8080/swagger-ui
 ```
+
+### Explore the API with Swagger UI
+
+Open http://localhost:8080/swagger-ui in your browser to access the interactive API documentation where you can:
+- View all available endpoints with request/response schemas
+- Try out API calls directly from the browser
+- See RFC 7807 JSON Problem error responses
+- Download the OpenAPI 3.1 specification
 
 ## Start the UI (Development Mode)
 
@@ -349,6 +452,59 @@ npm install
 - **Monitoring**: Add metrics for revision activation, creation, deletion
 - **Audit logging**: Track all workflow management operations
 
+## API Endpoints Reference
+
+### Workflow Creation
+```bash
+# POST /api/workflows - Create first revision (v1)
+curl -X POST http://localhost:8080/api/workflows \
+  -H "Content-Type: application/x-yaml" \
+  --data-binary @workflow.yaml
+
+# Response: 201 Created
+# Location: /api/workflows/{namespace}/{id}/{version}
+```
+
+### Revision Management
+```bash
+# POST /api/workflows/{namespace}/{id} - Create new revision
+curl -X POST http://localhost:8080/api/workflows/prod/my-workflow \
+  -H "Content-Type: application/x-yaml" \
+  --data-binary @workflow-v2.yaml
+
+# GET /api/workflows/{namespace}/{id} - List all revisions
+curl http://localhost:8080/api/workflows/prod/my-workflow
+
+# GET /api/workflows/{namespace}/{id}?active=true - List active revisions only
+curl "http://localhost:8080/api/workflows/prod/my-workflow?active=true"
+
+# GET /api/workflows/{namespace}/{id}/{version} - Get specific revision with YAML
+curl http://localhost:8080/api/workflows/prod/my-workflow/1
+```
+
+### Activation Control
+```bash
+# POST /api/workflows/{namespace}/{id}/{version}/activate
+curl -X POST http://localhost:8080/api/workflows/prod/my-workflow/1/activate
+
+# POST /api/workflows/{namespace}/{id}/{version}/deactivate
+curl -X POST http://localhost:8080/api/workflows/prod/my-workflow/1/deactivate
+```
+
+### Updates and Deletion
+```bash
+# PUT /api/workflows/{namespace}/{id}/{version} - Update inactive revision
+curl -X PUT http://localhost:8080/api/workflows/prod/my-workflow/2 \
+  -H "Content-Type: application/x-yaml" \
+  --data-binary @updated-workflow.yaml
+
+# DELETE /api/workflows/{namespace}/{id}/{version} - Delete revision
+curl -X DELETE http://localhost:8080/api/workflows/prod/my-workflow/2
+
+# DELETE /api/workflows/{namespace}/{id} - Delete entire workflow
+curl -X DELETE http://localhost:8080/api/workflows/prod/my-workflow
+```
+
 ## Resources
 
 - **OpenAPI Spec**: `specs/001-workflow-management/contracts/openapi.yaml`
@@ -356,3 +512,5 @@ npm install
 - **Research**: `specs/001-workflow-management/research.md`
 - **CLAUDE.md**: Project architecture and conventions
 - **Constitution**: `.specify/memory/constitution.md` (project principles)
+- **Swagger UI**: http://localhost:8080/swagger-ui (when API is running)
+- **OpenAPI JSON**: http://localhost:8080/openapi (when API is running)
