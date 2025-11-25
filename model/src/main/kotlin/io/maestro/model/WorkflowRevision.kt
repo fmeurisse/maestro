@@ -1,5 +1,6 @@
 package io.maestro.model
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.maestro.model.steps.Step
 import java.time.Instant
@@ -30,8 +31,10 @@ data class WorkflowRevision(
     val description: String,
     val steps: List<Step>,
     val active: Boolean = false,
-    val createdAt: Instant = Instant.now(),
-    val updatedAt: Instant = Instant.now()
+    @JsonProperty(required = false)
+    val createdAt: Instant? = null,
+    @JsonProperty(required = false)
+    val updatedAt: Instant? = null
 ): IWorkflowRevisionID {
 
     fun validate(): WorkflowRevision = this.apply {

@@ -28,8 +28,8 @@ data class WorkflowRevisionWithSource(
     val description: String get() = revision.description
     val steps: List<Step> get() = revision.steps
     val active: Boolean get() = revision.active
-    val createdAt: Instant get() = revision.createdAt
-    val updatedAt: Instant get() = revision.updatedAt
+    val createdAt: Instant? get() = revision.createdAt
+    val updatedAt: Instant? get() = revision.updatedAt
 
 
     fun toWorkflowRevisionID(): WorkflowRevisionID = revision.toWorkflowRevisionID()
