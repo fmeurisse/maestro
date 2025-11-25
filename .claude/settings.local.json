@@ -20,7 +20,9 @@
       "Bash(git mv:*)",
       "Bash(test:*)",
       "Bash(npm install)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test)"
     ],
     "deny": [],
     "ask": []
