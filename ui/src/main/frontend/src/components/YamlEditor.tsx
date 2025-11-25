@@ -26,7 +26,7 @@ export function YamlEditor({
       const openBraces = (val.match(/{/g) || []).length
       const closeBraces = (val.match(/}/g) || []).length
       const openBrackets = (val.match(/\[/g) || []).length
-      const closeBrackets = (val.match(/\]/g) || []).length
+      const closeBrackets = (val.match(/]/g) || []).length
 
       return openBraces === closeBraces && openBrackets === closeBrackets
     } catch {

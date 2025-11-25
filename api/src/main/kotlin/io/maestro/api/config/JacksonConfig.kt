@@ -1,37 +1,27 @@
 package io.maestro.api.config
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.databind.jsontype.NamedType
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.maestro.core.steps.StepTypeRegistry
-import io.maestro.core.steps.If
-import io.maestro.core.steps.LogTask
-import io.maestro.core.steps.Sequence
 import io.maestro.core.steps.registerStepTypes
-import io.quarkus.arc.DefaultBean
 import io.quarkus.jackson.ObjectMapperCustomizer
 import jakarta.enterprise.context.ApplicationScoped
-import jakarta.enterprise.inject.Produces
-import jakarta.inject.Named
 import jakarta.inject.Singleton
 
 /**
  * Jackson ObjectMapper configuration for YAML/JSON serialization.
- * 
+ *
  * Configures polymorphic type handling for Step hierarchy with runtime
  * step type registration via ServiceLoader for plugin extensibility.
- * 
+ *
  * This configuration:
  * - Registers core step types (Sequence, If, LogTask)
  * - Discovers plugin step types via StepTypeRegistry
  * - Configures YAML factory with proper formatting
  * - Enables polymorphic type serialization with "type" property
- * 
+ *
  * Note: For sealed interfaces in Kotlin, Jackson requires @JsonTypeInfo annotation
  * on the Step interface. However, subtype registration happens at runtime via
  * this configuration class, enabling plugin extensibility.

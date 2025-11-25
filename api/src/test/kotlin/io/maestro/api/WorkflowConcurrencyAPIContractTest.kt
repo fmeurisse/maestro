@@ -6,7 +6,6 @@ import io.restassured.config.EncoderConfig
 import io.restassured.http.ContentType
 import io.restassured.parsing.Parser
 import jakarta.inject.Inject
-import org.hamcrest.CoreMatchers
 import org.jdbi.v3.core.Jdbi
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -71,9 +70,9 @@ class WorkflowConcurrencyAPIContractTest {
         private fun getExistingUpdatedAt(namespace: String, id: String, version: Int): String {
             val existingRevisionYaml = RestAssured.given()
                 .accept("application/yaml")
-            .`when`()
+                .`when`()
                 .get("$WORKFLOW_ENDPOINT/$namespace/$id/$version")
-            .then()
+                .then()
                 .statusCode(200)
                 .extract()
                 .body()
@@ -81,7 +80,8 @@ class WorkflowConcurrencyAPIContractTest {
 
             val updatedAtRegex = Regex("""updatedAt:\s*([^\s\n]+)""")
             val updatedAtMatch = updatedAtRegex.find(existingRevisionYaml)
-            return updatedAtMatch?.groupValues?.get(1) ?: throw AssertionError("Could not find updatedAt in existing revision")
+            return updatedAtMatch?.groupValues?.get(1)
+                ?: throw AssertionError("Could not find updatedAt in existing revision")
         }
     }
 
@@ -95,43 +95,49 @@ class WorkflowConcurrencyAPIContractTest {
         // Create initial workflow (version 1)
         val v1Yaml = createWorkflowYaml(namespace, id, message = "Version 1")
         RestAssured.given()
-            .config(RestAssured.config().encoderConfig(
-                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
-            ))
+            .config(
+                RestAssured.config().encoderConfig(
+                    EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+                )
+            )
             .contentType("application/yaml")
             .body(v1Yaml)
-        .`when`()
+            .`when`()
             .post(WORKFLOW_ENDPOINT)
-        .then()
+            .then()
             .statusCode(201)
 
         // Create version 2 and version 3 "concurrently" (independent operations)
         val v2Yaml = createWorkflowYaml(namespace, id, message = "Version 2")
         val createV2 = RestAssured.given()
-            .config(RestAssured.config().encoderConfig(
-                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
-            ))
+            .config(
+                RestAssured.config().encoderConfig(
+                    EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+                )
+            )
             .contentType("application/yaml")
             .accept("application/yaml")
             .body(v2Yaml)
-        .`when`()
+            .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id")
-        .then()
+            .then()
             .statusCode(201)
             .extract()
             .response()
 
         val v3Yaml = createWorkflowYaml(namespace, id, message = "Version 3")
         val createV3 = RestAssured.given()
-            .config(RestAssured.config().encoderConfig(
-                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
-            ))
+            .config(
+                RestAssured.config().encoderConfig(
+                    EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+                )
+            )
             .contentType("application/yaml")
             .accept("application/yaml")
             .body(v3Yaml)
-        .`when`()
+            .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id")
-        .then()
+            .then()
             .statusCode(201)
             .extract()
             .response()
@@ -142,16 +148,18 @@ class WorkflowConcurrencyAPIContractTest {
         val v3YamlResponse = createV3.body().asString()
         val v2VersionRegex = Regex("""version:\s*(\d+)""")
         val v3VersionRegex = Regex("""version:\s*(\d+)""")
-        val v2Version = v2VersionRegex.find(v2YamlResponse)?.groupValues?.get(1)?.toInt() ?: throw AssertionError("Could not find version in v2 response")
-        val v3Version = v3VersionRegex.find(v3YamlResponse)?.groupValues?.get(1)?.toInt() ?: throw AssertionError("Could not find version in v3 response")
+        val v2Version = v2VersionRegex.find(v2YamlResponse)?.groupValues?.get(1)?.toInt()
+            ?: throw AssertionError("Could not find version in v2 response")
+        val v3Version = v3VersionRegex.find(v3YamlResponse)?.groupValues?.get(1)?.toInt()
+            ?: throw AssertionError("Could not find version in v3 response")
         assert(v2Version == 2)
         assert(v3Version == 3)
 
         // Verify all three revisions exist
         val allRevisionsYaml = RestAssured.given()
-        .`when`()
+            .`when`()
             .get("$WORKFLOW_ENDPOINT/$namespace/$id")
-        .then()
+            .then()
             .statusCode(200)
             .extract()
             .body()
@@ -171,45 +179,49 @@ class WorkflowConcurrencyAPIContractTest {
         // Create two revisions
         val v1Yaml = createWorkflowYaml(namespace, id, message = "Version 1")
         RestAssured.given()
-            .config(RestAssured.config().encoderConfig(
-                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
-            ))
+            .config(
+                RestAssured.config().encoderConfig(
+                    EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+                )
+            )
             .contentType("application/yaml")
             .accept("application/yaml")
             .body(v1Yaml)
-        .`when`()
+            .`when`()
             .post(WORKFLOW_ENDPOINT)
-        .then()
+            .then()
             .statusCode(201)
 
         val v2Yaml = createWorkflowYaml(namespace, id, message = "Version 2")
         RestAssured.given()
-            .config(RestAssured.config().encoderConfig(
-                EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
-            ))
+            .config(
+                RestAssured.config().encoderConfig(
+                    EncoderConfig.encoderConfig().encodeContentTypeAs("application/yaml", ContentType.TEXT)
+                )
+            )
             .contentType("application/yaml")
             .accept("application/yaml")
             .body(v2Yaml)
-        .`when`()
+            .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id")
-        .then()
+            .then()
             .statusCode(201)
 
         // Activate both revisions "concurrently" (both should succeed - multi-active allowed)
         val updatedAtV1 = getExistingUpdatedAt(namespace, id, 1)
         RestAssured.given()
             .header("X-Current-Updated-At", updatedAtV1)
-        .`when`()
+            .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/1/activate")
-        .then()
+            .then()
             .statusCode(200)
 
         val updatedAtV2 = getExistingUpdatedAt(namespace, id, 2)
         RestAssured.given()
             .header("X-Current-Updated-At", updatedAtV2)
-        .`when`()
+            .`when`()
             .post("$WORKFLOW_ENDPOINT/$namespace/$id/2/activate")
-        .then()
+            .then()
             .statusCode(200)
 
         // Verify both are active
@@ -217,9 +229,9 @@ class WorkflowConcurrencyAPIContractTest {
         val activeRevisionsYaml = RestAssured.given()
             .accept("application/yaml")
             .queryParam("active", "true")
-        .`when`()
+            .`when`()
             .get("$WORKFLOW_ENDPOINT/$namespace/$id")
-        .then()
+            .then()
             .statusCode(200)
             .extract()
             .body()
