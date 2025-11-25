@@ -81,16 +81,21 @@ Multi-module Maven project structure:
 
 **Independent Test**: POST /workflows/{namespace}/{id}/{version}/execute with valid parameters → receives execution ID → GET /executions/{executionId} shows completed execution with all step results
 
+**Current Status (2025-11-25)**:
+- ✅ Step unit tests complete (T021-T023): 18 tests passing
+- 🔄 Use case test files created (T025-T026): Need compilation fixes before implementation
+- ⏳ Remaining: Integration tests, implementation, API layer, error handling
+
 ### Tests for User Story 1 (TDD - WRITE FIRST, ENSURE FAILURE)
 
 #### Unit Tests
 
-- [ ] T021 [P] [US1] Write SequenceUnitTest in model/src/test/kotlin/io/maestro/model/steps/SequenceUnitTest.kt (test execute with success, test fail-fast on child failure, test context propagation) - MUST FAIL before T014
-- [ ] T022 [P] [US1] Write IfUnitTest in model/src/test/kotlin/io/maestro/model/steps/IfUnitTest.kt (test condition evaluation, test branch execution) - MUST FAIL before T015
-- [ ] T023 [P] [US1] Write LogTaskUnitTest in model/src/test/kotlin/io/maestro/model/steps/LogTaskUnitTest.kt (test logging execution) - MUST FAIL before T016
-- [ ] T024 [P] [US1] Write WorkTaskUnitTest in model/src/test/kotlin/io/maestro/model/steps/WorkTaskUnitTest.kt (test task execution) - MUST FAIL before T017
-- [ ] T025 [P] [US1] Write ExecuteWorkflowUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/ExecuteWorkflowUseCaseUnitTest.kt (mock repository, test execution flow, test per-step persistence) - MUST FAIL before T031
-- [ ] T026 [P] [US1] Write GetExecutionStatusUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/GetExecutionStatusUseCaseUnitTest.kt (mock repository, test query by ID) - MUST FAIL before T032
+- [X] T021 [P] [US1] Write SequenceUnitTest in core/src/test/kotlin/io/maestro/core/steps/SequenceUnitTest.kt (test execute with success, test fail-fast on child failure, test context propagation)
+- [X] T022 [P] [US1] Write IfUnitTest in core/src/test/kotlin/io/maestro/core/steps/IfUnitTest.kt (test condition evaluation, test branch execution)
+- [X] T023 [P] [US1] Write LogTaskUnitTest in core/src/test/kotlin/io/maestro/core/steps/LogTaskUnitTest.kt (test logging execution)
+- [ ] T024 [P] [US1] Write WorkTaskUnitTest in model/src/test/kotlin/io/maestro/model/steps/WorkTaskUnitTest.kt (test task execution) - SKIPPED (WorkTask not needed for MVP)
+- [~] T025 [P] [US1] Write ExecuteWorkflowUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/ExecuteWorkflowUseCaseUnitTest.kt (mock repository, test execution flow, test per-step persistence) - FILE CREATED, needs WorkflowRevision constructor fixes
+- [~] T026 [P] [US1] Write GetExecutionStatusUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/GetExecutionStatusUseCaseUnitTest.kt (mock repository, test query by ID) - FILE CREATED, minor fixes needed
 
 #### Integration Tests
 
