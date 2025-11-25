@@ -64,7 +64,7 @@ class ActivateRevisionUseCase constructor(
             throw OptimisticLockException(revisionId, currentUpdatedAt, existingUpdatedAt)
         }
 
-        // Update YAML source with new updatedAt timestamp
+        // Update YAML source with a new updatedAt timestamp
         val now = Instant.now(clock)
         logger.debug { "Updating YAML source with metadata" }
         val updatedYaml = WorkflowYamlMetadataUpdater.updateTimestamp(existing.yamlSource, now)

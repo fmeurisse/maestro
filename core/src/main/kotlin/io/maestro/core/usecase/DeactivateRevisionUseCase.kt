@@ -57,9 +57,10 @@ class DeactivateRevisionUseCase constructor(
             ?: throw WorkflowRevisionNotFoundException(revisionId)
 
         // Optimistic lock check: validate updatedAt matches
-        if (existing.revision.updatedAt != currentUpdatedAt) {
+        val existingUpdatedAt = existing.revision.updatedAt!!
+        if (existingUpdatedAt != currentUpdatedAt) {
             logger.warn { "Optimistic lock conflict detected for deactivation of $revisionId" }
-            throw OptimisticLockException(revisionId, currentUpdatedAt, existing.revision.updatedAt!!)
+            throw OptimisticLockException(revisionId, currentUpdatedAt, existingUpdatedAt)
         }
 
         // Update YAML source with new updatedAt timestamp

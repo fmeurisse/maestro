@@ -57,7 +57,7 @@ class CreateRevisionUseCase constructor(
 
         val workflowId = WorkflowID(namespace, id)
 
-        // Verify workflow exists
+        // Verify that the workflow exists
         if (!repository.exists(workflowId)) {
             logger.warn { "Workflow not found: $workflowId" }
             throw WorkflowNotFoundException(workflowId)
