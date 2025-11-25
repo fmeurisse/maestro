@@ -19,6 +19,10 @@ class WorkflowYamlMetadataUpdater {
         private val VERSION_PATTERN = Regex("""^(version\s*:\s*).*$""", RegexOption.MULTILINE)
         private val CREATED_AT_PATTERN = Regex("""^(createdAt\s*:\s*).*$""", RegexOption.MULTILINE)
         private val UPDATED_AT_PATTERN = Regex("""^(updatedAt\s*:\s*).*$""", RegexOption.MULTILINE)
+        private val ACTIVE_PATTERN = Regex("""^(active\s*:\s*).*$""", RegexOption.MULTILINE)
+
+        // Value-capturing patterns (used for extraction)
+        private val UPDATED_AT_VALUE_PATTERN = Regex("""^updatedAt\s*:\s*(.+)$""", RegexOption.MULTILINE)
 
         // Pattern to find location after namespace and id for inserting fields
         private val AFTER_ID_PATTERN = Regex("""(^namespace\s*:.*\n)(id\s*:.*\n)""", RegexOption.MULTILINE)
@@ -111,6 +115,44 @@ class WorkflowYamlMetadataUpdater {
         }
 
         /**
+         * Updates or adds the active flag in the YAML source.
+         * If absent, the field is inserted after updatedAt when present,
+         * otherwise after createdAt/version/id in that order.
+         */
+        fun updateActive(yamlSource: String, active: Boolean): String {
+            val activeValue = active.toString()
+            return if (ACTIVE_PATTERN.containsMatchIn(yamlSource)) {
+                yamlSource.replace(ACTIVE_PATTERN, "$1$activeValue")
+            } else {
+                insertFieldAfterUpdatedAt(yamlSource, "active", activeValue)
+            }
+        }
+
+        /**
+         * Extracts the updatedAt timestamp from the YAML source, if present.
+         * Returns null when the field is missing or cannot be parsed as an Instant.
+         */
+        fun extractUpdatedAt(yamlSource: String): Instant? {
+            val match = UPDATED_AT_VALUE_PATTERN.find(yamlSource) ?: return null
+            val raw = match.groupValues.getOrNull(1)?.trim() ?: return null
+            return try {
+                Instant.parse(raw)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        /**
+         * Extracts the updatedAt timestamp or throws IllegalArgumentException if absent or invalid.
+         */
+        fun requireUpdatedAt(yamlSource: String): Instant {
+            return extractUpdatedAt(yamlSource)
+                ?: throw IllegalArgumentException("updatedAt not found or invalid in YAML source")
+        }
+
+        // Note: No legacy aliases are kept to encourage direct usage of requireUpdatedAt/extractUpdatedAt
+
+        /**
          * Inserts a field after the "id" field.
          * Used when the field doesn't exist and needs to be added at the top level.
          */
@@ -144,6 +186,18 @@ class WorkflowYamlMetadataUpdater {
                 yamlSource.replace(createdAtPattern, "$1$fieldName: $value\n")
             } else {
                 insertFieldAfterVersion(yamlSource, fieldName, value)
+            }
+        }
+
+        /**
+         * Inserts a field after the "updatedAt" field, or falls back to createdAt/version/id if not present.
+         */
+        private fun insertFieldAfterUpdatedAt(yamlSource: String, fieldName: String, value: String): String {
+            val updatedAtPattern = Regex("""(^updatedAt\s*:.*\n)""", RegexOption.MULTILINE)
+            return if (updatedAtPattern.containsMatchIn(yamlSource)) {
+                yamlSource.replace(updatedAtPattern, "$1$fieldName: $value\n")
+            } else {
+                insertFieldAfterCreatedAt(yamlSource, fieldName, value)
             }
         }
     }
