@@ -69,7 +69,7 @@ class DeactivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.deactivateWithSource(revisionId, capture(yamlSlot)) } returns deactivatedRevision
 
             // When
-            val result = useCase.execute("test-ns", "workflow-1", 1)
+            val result = useCase.execute("test-ns", "workflow-1", 1, fixedInstant)
 
             // Then
             result.active shouldBe false
@@ -128,7 +128,7 @@ class DeactivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.deactivateWithSource(revisionId, capture(yamlSlot)) } returns deactivatedRevision
 
             // When
-            val result = useCase.execute(revisionId)
+            val result = useCase.execute(revisionId, fixedInstant)
 
             // Then
             result.active shouldBe false
@@ -149,7 +149,7 @@ class DeactivateRevisionUseCaseUnitTest : FeatureSpec({
 
             // When/Then
             shouldThrow<WorkflowRevisionNotFoundException> {
-                useCase.execute("test-ns", "non-existent", 1)
+                useCase.execute("test-ns", "non-existent", 1, fixedInstant)
             }
 
             verify(exactly = 1) { repository.findByIdWithSource(revisionId) }
@@ -200,7 +200,7 @@ class DeactivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.deactivateWithSource(revisionId, capture(yamlSlot)) } returns alreadyInactiveRevision
 
             // When
-            val result = useCase.execute("test-ns", "workflow-1", 1)
+            val result = useCase.execute("test-ns", "workflow-1", 1, fixedInstant)
 
             // Then
             result.active shouldBe false
@@ -254,7 +254,7 @@ class DeactivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.deactivateWithSource(revision1Id, capture(yamlSlot)) } returns deactivatedRevision1
 
             // When
-            val result = useCase.execute("test-ns", "workflow-1", 1)
+            val result = useCase.execute("test-ns", "workflow-1", 1, fixedInstant)
 
             // Then - version 1 is now inactive
             result.active shouldBe false

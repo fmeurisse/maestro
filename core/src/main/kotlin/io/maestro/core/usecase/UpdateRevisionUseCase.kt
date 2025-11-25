@@ -5,6 +5,7 @@ import io.maestro.core.IWorkflowRevisionRepository
 import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.maestro.core.errors.ActiveRevisionConflictException
+import io.maestro.core.errors.OptimisticLockException
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.WorkflowRevisionWithSource
@@ -50,18 +51,25 @@ class UpdateRevisionUseCase constructor(
      * Implements:
      * - FR-010: Update inactive revisions
      * - REQ-WF-056: Parse and validate YAML
+     * - Optimistic locking: Uses updatedAt from YAML to detect concurrent modifications
      *
      * @param namespace The workflow namespace
      * @param id The workflow ID
      * @param version The revision version to update
-     * @param yaml New YAML definition
+     * @param yaml New YAML definition (must include updatedAt field for optimistic locking)
      * @return The updated revision with updated YAML source
      * @throws WorkflowRevisionNotFoundException if revision doesn't exist
      * @throws ActiveRevisionConflictException if revision is active
      * @throws InvalidWorkflowRevisionException if namespace, id, or version don't match path parameters
+     * @throws OptimisticLockException if updatedAt in YAML doesn't match current updatedAt (concurrent modification detected)
      * @throws io.maestro.core.errors.WorkflowRevisionParsingException if YAML is invalid
      */
-    fun execute(namespace: String, id: String, version: Int, yaml: String): WorkflowRevisionWithSource {
+    fun execute(
+        namespace: String,
+        id: String,
+        version: Int,
+        yaml: String
+    ): WorkflowRevisionWithSource {
         logger.info { "Executing update revision use case for $namespace/$id/$version" }
 
         val revisionId = WorkflowRevisionID(namespace, id, version)
@@ -80,6 +88,22 @@ class UpdateRevisionUseCase constructor(
 
         // Parse and validate the new YAML
         val parsedRevision = yamlParser.parseRevision(yaml, validate = true)
+
+        // Optimistic locking check: Use updatedAt from YAML to detect concurrent modifications
+        // The YAML MUST contain an updatedAt field to verify it matches the current database value
+        val yamlUpdatedAt = parsedRevision.updatedAt
+            ?: throw InvalidWorkflowRevisionException("updatedAt field is required for updates to enable optimistic locking")
+
+        val existingUpdatedAt = existing.updatedAt
+            ?: throw IllegalStateException("Existing revision has null updatedAt - database integrity issue")
+
+        if (!existingUpdatedAt.equals(yamlUpdatedAt)) {
+            logger.warn {
+                "Optimistic lock conflict detected for $revisionId. " +
+                "YAML updatedAt: $yamlUpdatedAt, database updatedAt: $existingUpdatedAt"
+            }
+            throw OptimisticLockException(revisionId, yamlUpdatedAt, existingUpdatedAt)
+        }
 
         // Ensure namespace, id, and version match the path parameters
         if (parsedRevision.namespace != namespace) {
@@ -111,10 +135,13 @@ class UpdateRevisionUseCase constructor(
 
         // Update YAML source with metadata (preserve version and createdAt, update updatedAt)
         logger.debug { "Updating YAML source with metadata" }
+        val existingCreatedAt = existing.createdAt
+            ?: throw IllegalStateException("Existing revision has null createdAt - database integrity issue")
+
         val updatedYaml = WorkflowYamlMetadataUpdater.updateAllMetadata(
             yamlSource = yaml,
             version = version,
-            createdAt = existing.createdAt,  // Preserve original creation time
+            createdAt = existingCreatedAt,  // Preserve original creation time
             updatedAt = now
         )
 
@@ -135,12 +162,16 @@ class UpdateRevisionUseCase constructor(
      * Updates a workflow revision using WorkflowRevisionID.
      *
      * @param revisionId The complete revision identifier
-     * @param yaml New YAML definition
+     * @param yaml New YAML definition (must include updatedAt field for optimistic locking)
      * @return The updated revision with updated YAML source
      * @throws WorkflowRevisionNotFoundException if revision doesn't exist
      * @throws ActiveRevisionConflictException if revision is active
+     * @throws OptimisticLockException if updatedAt in YAML doesn't match current updatedAt
      */
-    fun execute(revisionId: WorkflowRevisionID, yaml: String): WorkflowRevisionWithSource {
+    fun execute(
+        revisionId: WorkflowRevisionID,
+        yaml: String
+    ): WorkflowRevisionWithSource {
         return execute(revisionId.namespace, revisionId.id, revisionId.version, yaml)
     }
 }

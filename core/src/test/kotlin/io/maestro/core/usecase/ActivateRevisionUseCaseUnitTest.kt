@@ -64,7 +64,7 @@ class ActivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.activateWithSource(revisionId, any()) } returns activatedRevision
 
             // When
-            val result = useCase.execute("test-ns", "workflow-1", 1)
+            val result = useCase.execute("test-ns", "workflow-1", 1, fixedInstant)
 
             // Then
             result.active shouldBe true
@@ -117,7 +117,7 @@ class ActivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.activateWithSource(revisionId, any()) } returns activatedRevision
 
             // When
-            val result = useCase.execute(revisionId)
+            val result = useCase.execute(revisionId, fixedInstant)
 
             // Then
             result.active shouldBe true
@@ -136,7 +136,7 @@ class ActivateRevisionUseCaseUnitTest : FeatureSpec({
 
             // When/Then
             shouldThrow<WorkflowRevisionNotFoundException> {
-                useCase.execute("test-ns", "non-existent", 1)
+                useCase.execute("test-ns", "non-existent", 1, fixedInstant)
             }
 
             verify(exactly = 1) { repository.findByIdWithSource(revisionId) }
@@ -184,7 +184,7 @@ class ActivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.activateWithSource(revisionId, any()) } returns alreadyActiveRevision
 
             // When
-            val result = useCase.execute("test-ns", "workflow-1", 1)
+            val result = useCase.execute("test-ns", "workflow-1", 1, fixedInstant)
 
             // Then
             result.active shouldBe true
@@ -266,8 +266,8 @@ class ActivateRevisionUseCaseUnitTest : FeatureSpec({
             every { repository.activateWithSource(revision2Id, any()) } returns revision2
 
             // When
-            val result1 = useCase.execute("test-ns", "workflow-1", 1)
-            val result2 = useCase.execute("test-ns", "workflow-1", 2)
+            val result1 = useCase.execute("test-ns", "workflow-1", 1, fixedInstant)
+            val result2 = useCase.execute("test-ns", "workflow-1", 2, fixedInstant)
 
             // Then - both should be active (multi-active support)
             result1.active shouldBe true

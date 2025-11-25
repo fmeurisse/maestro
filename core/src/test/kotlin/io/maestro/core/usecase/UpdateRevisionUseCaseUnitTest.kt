@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.FeatureSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.maestro.core.IWorkflowRevisionRepository
+import io.maestro.core.WorkflowYamlMetadataUpdater
 import io.maestro.core.WorkflowYamlParser
 import io.maestro.core.errors.ActiveRevisionConflictException
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
@@ -15,6 +16,7 @@ import io.maestro.model.WorkflowRevisionWithSource
 import io.maestro.model.errors.InvalidWorkflowRevisionException
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.verify
 import java.time.Clock
@@ -36,6 +38,8 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
 
             val revisionId = WorkflowRevisionID("test-ns", "workflow-1", 1)
 
+            val existingUpdatedAt = Instant.parse("2024-01-01T10:00:00Z")
+
             // Existing inactive revision
             val existingRevision = WorkflowRevision(
                 namespace = "test-ns",
@@ -46,22 +50,23 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
                 steps = listOf(LogTask("Old message")),
                 active = false,
                 createdAt = Instant.parse("2024-01-01T10:00:00Z"),
-                updatedAt = Instant.parse("2024-01-01T10:00:00Z")
+                updatedAt = existingUpdatedAt
             )
 
-            // New YAML with updated content
+            // New YAML with updated content (including updatedAt for optimistic locking)
             val newYaml = """
                 namespace: test-ns
                 id: workflow-1
                 version: 1
                 name: Updated Name
                 description: Updated description
+                updatedAt: $existingUpdatedAt
                 steps:
                   - type: LogTask
                     message: "Updated message"
             """.trimIndent()
 
-            // Parsed new content
+            // Parsed new content (with matching updatedAt for optimistic locking)
             val parsedRevision = WorkflowRevision(
                 namespace = "test-ns",
                 id = "workflow-1",
@@ -70,9 +75,28 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
                 description = "Updated description",
                 steps = listOf(LogTask("Updated message")),
                 active = false,
-                createdAt = fixedInstant,
-                updatedAt = fixedInstant
+                createdAt = existingRevision.createdAt,
+                updatedAt = existingUpdatedAt  // Must match existing for optimistic locking
             )
+
+            // Mock the WorkflowYamlMetadataUpdater to return updated YAML with all metadata
+            val updatedYaml = """
+                namespace: test-ns
+                id: workflow-1
+                version: 1
+                createdAt: ${existingRevision.createdAt}
+                updatedAt: $fixedInstant
+                name: Updated Name
+                description: Updated description
+                steps:
+                  - type: LogTask
+                    message: "Updated message"
+            """.trimIndent()
+
+            mockkObject(WorkflowYamlMetadataUpdater)
+            every {
+                WorkflowYamlMetadataUpdater.updateAllMetadata(any(), any(), any(), any())
+            } returns updatedYaml
 
             every { repository.findById(revisionId) } returns existingRevision
             every { yamlParser.parseRevision(newYaml, true) } returns parsedRevision
@@ -360,6 +384,8 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
 
             val revisionId = WorkflowRevisionID("test-ns", "workflow-1", 2)
 
+            val existingUpdatedAt = Instant.parse("2024-01-01T11:00:00Z")
+
             val existingRevision = WorkflowRevision(
                 namespace = "test-ns",
                 id = "workflow-1",
@@ -369,7 +395,7 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
                 steps = listOf(LogTask("Old")),
                 active = false,
                 createdAt = fixedInstant,
-                updatedAt = fixedInstant
+                updatedAt = existingUpdatedAt
             )
 
             val newYaml = """
@@ -378,6 +404,7 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
                 version: 2
                 name: Updated
                 description: Updated
+                updatedAt: $existingUpdatedAt
                 steps:
                   - type: LogTask
                     message: "Updated"
@@ -392,8 +419,16 @@ class UpdateRevisionUseCaseUnitTest : FeatureSpec({
                 steps = listOf(LogTask("Updated")),
                 active = false,
                 createdAt = fixedInstant,
-                updatedAt = fixedInstant
+                updatedAt = existingUpdatedAt  // Must match existing for optimistic locking
             )
+
+            // Mock the WorkflowYamlMetadataUpdater
+            val updatedYaml = newYaml.replace("updatedAt: $existingUpdatedAt", "updatedAt: $fixedInstant")
+
+            mockkObject(WorkflowYamlMetadataUpdater)
+            every {
+                WorkflowYamlMetadataUpdater.updateAllMetadata(any(), any(), any(), any())
+            } returns updatedYaml
 
             every { repository.findById(revisionId) } returns existingRevision
             every { yamlParser.parseRevision(newYaml, true) } returns parsedRevision
