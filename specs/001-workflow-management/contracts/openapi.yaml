@@ -1,0 +1,620 @@
+openapi: 3.1.0
+info:
+  title: Maestro Workflow Management API
+  version: 1.0.0
+  description: |
+    Workflow Management API for creating, versioning, activating, and managing workflow revisions.
+
+    **Features**:
+    - Create workflows with YAML definitions
+    - Manage multiple sequential revisions per workflow
+    - Activate/deactivate revisions for deployment control
+    - Support multiple active revisions (canary deployments, A/B testing)
+    - Update inactive revisions before activation
+    - Delete individual revisions or entire workflows
+
+    **Error Handling**: All errors follow RFC 7807 JSON Problem format.
+  contact:
+    name: Maestro Team
+    url: https://maestro.io
+
+servers:
+  - url: http://localhost:8080/api
+    description: Local development
+  - url: https://maestro.io/api
+    description: Production
+
+tags:
+  - name: Workflows
+    description: Workflow lifecycle management operations
+
+paths:
+  /workflows:
+    post:
+      tags: [Workflows]
+      summary: Create a new workflow (first revision)
+      description: |
+        Creates the first revision (version 1) of a new workflow.
+        The revision is created as inactive by default.
+
+        **Validation**:
+        - namespace + id must be unique
+        - YAML must be valid and parseable
+        - Step types must be known and valid
+      operationId: createWorkflow
+      requestBody:
+        required: true
+        content:
+          application/x-yaml:
+            schema:
+              $ref: '#/components/schemas/CreateWorkflowRequest'
+            examples:
+              simpleWorkflow:
+                summary: Simple workflow with log task
+                value: |
+                  namespace: production
+                  id: payment-processing
+                  name: Payment Processing
+                  description: Handles payment processing workflow
+                  steps:
+                    type: Sequence
+                    steps:
+                      - type: LogTask
+                        message: "Starting payment processing"
+                      - type: WorkTask
+                        name: "process-payment"
+                        parameters:
+                          provider: "stripe"
+              conditionalWorkflow:
+                summary: Workflow with conditional logic
+                value: |
+                  namespace: production
+                  id: order-fulfillment
+                  name: Order Fulfillment
+                  description: Fulfills orders with approval for high-value items
+                  steps:
+                    type: Sequence
+                    steps:
+                      - type: If
+                        condition: "amount > 1000"
+                        then:
+                          type: WorkTask
+                          name: "manual-approval"
+                          parameters: {}
+                        else:
+                          type: WorkTask
+                          name: "auto-fulfill"
+                          parameters: {}
+      responses:
+        '201':
+          description: Workflow created successfully
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URI of the created workflow revision
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '400':
+          description: Invalid request (malformed YAML, invalid steps, validation failure)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                invalidYaml:
+                  summary: Malformed YAML
+                  value:
+                    type: "https://maestro.io/problems/invalid-yaml"
+                    title: "Invalid YAML"
+                    status: 400
+                    detail: "YAML parsing failed at line 5: unexpected character"
+                invalidStep:
+                  summary: Unknown step type
+                  value:
+                    type: "https://maestro.io/problems/invalid-step"
+                    title: "Invalid Step"
+                    status: 400
+                    detail: "Unknown step type 'InvalidTask' in workflow definition"
+        '409':
+          description: Workflow already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: "https://maestro.io/problems/workflow-exists"
+                title: "Workflow Already Exists"
+                status: 409
+                detail: "Workflow with namespace 'production' and id 'payment-processing' already exists"
+
+  /workflows/{namespace}:
+    get:
+      tags: [Workflows]
+      summary: List all workflows in a namespace
+      operationId: listWorkflows
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+      responses:
+        '200':
+          description: List of workflows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkflowSummary'
+
+  /workflows/{namespace}/{id}:
+    get:
+      tags: [Workflows]
+      summary: Get all revisions of a workflow
+      operationId: getWorkflowRevisions
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+        - name: active
+          in: query
+          description: Filter by active state
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of workflow revisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '404':
+          description: Workflow not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+    post:
+      tags: [Workflows]
+      summary: Create a new revision of an existing workflow
+      description: |
+        Creates a new revision with version number = max(existing versions) + 1.
+        The new revision is created as inactive by default.
+      operationId: createRevision
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/x-yaml:
+            schema:
+              $ref: '#/components/schemas/CreateRevisionRequest'
+            example: |
+              name: Payment Processing
+              description: Updated payment processing with retry logic
+              steps:
+                type: Sequence
+                steps:
+                  - type: LogTask
+                    message: "Starting payment with retry"
+      responses:
+        '201':
+          description: Revision created successfully
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Workflow not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+    delete:
+      tags: [Workflows]
+      summary: Delete entire workflow (all revisions)
+      description: |
+        Deletes all revisions of a workflow, including active ones.
+        This operation cannot be undone.
+      operationId: deleteWorkflow
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Workflow deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  namespace:
+                    type: string
+                  id:
+                    type: string
+                  deletedRevisions:
+                    type: integer
+                example:
+                  message: "Workflow deleted successfully"
+                  namespace: "production"
+                  id: "payment-processing"
+                  deletedRevisions: 3
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workflows/{namespace}/{id}/{version}:
+    get:
+      tags: [Workflows]
+      summary: Get a specific workflow revision
+      operationId: getRevision
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/VersionParam'
+      responses:
+        '200':
+          description: Workflow revision details
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Workflows]
+      summary: Update an inactive workflow revision
+      description: |
+        Updates description and/or steps of an inactive revision.
+        Active revisions cannot be updated - they must be deactivated first.
+        Version number, namespace, id, and createdAt are immutable.
+      operationId: updateRevision
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/VersionParam'
+      requestBody:
+        required: true
+        content:
+          application/x-yaml:
+            schema:
+              $ref: '#/components/schemas/UpdateRevisionRequest'
+            example: |
+              description: "Updated description with more details"
+              steps:
+                type: Sequence
+                steps:
+                  - type: LogTask
+                    message: "Updated workflow"
+      responses:
+        '200':
+          description: Revision updated successfully
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot update active revision
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: "https://maestro.io/problems/active-revision-conflict"
+                title: "Active Revision Conflict"
+                status: 409
+                detail: "Cannot update active revision: production/payment-processing/2. Deactivate it first."
+
+    delete:
+      tags: [Workflows]
+      summary: Delete a specific workflow revision
+      description: |
+        Deletes an inactive revision. Active revisions must be deactivated first.
+        Deleted version numbers are not reused.
+      operationId: deleteRevision
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/VersionParam'
+      responses:
+        '204':
+          description: Revision deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cannot delete active revision
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /workflows/{namespace}/{id}/{version}/activate:
+    post:
+      tags: [Workflows]
+      summary: Activate a workflow revision
+      description: |
+        Marks a revision as active. Multiple revisions can be active simultaneously
+        for canary deployments and A/B testing.
+      operationId: activateRevision
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/VersionParam'
+      responses:
+        '200':
+          description: Revision activated successfully
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /workflows/{namespace}/{id}/{version}/deactivate:
+    post:
+      tags: [Workflows]
+      summary: Deactivate a workflow revision
+      description: |
+        Marks a revision as inactive. The revision remains in the system for reference.
+      operationId: deactivateRevision
+      parameters:
+        - $ref: '#/components/parameters/NamespaceParam'
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/VersionParam'
+      responses:
+        '200':
+          description: Revision deactivated successfully
+          content:
+            application/x-yaml:
+              schema:
+                $ref: '#/components/schemas/WorkflowRevisionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    NamespaceParam:
+      name: namespace
+      in: path
+      required: true
+      description: Workflow namespace (e.g., "production", "staging")
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9_-]+$'
+        maxLength: 100
+
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: Workflow identifier within namespace
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9_-]+$'
+        maxLength: 100
+
+    VersionParam:
+      name: version
+      in: path
+      required: true
+      description: Revision version number (positive integer)
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+
+  schemas:
+    CreateWorkflowRequest:
+      type: object
+      required: [namespace, id, name, description, steps]
+      properties:
+        namespace:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          maxLength: 100
+          example: "production"
+        id:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          maxLength: 100
+          example: "payment-processing"
+        name:
+          type: string
+          maxLength: 255
+          example: "Payment Processing"
+        description:
+          type: string
+          maxLength: 1000
+          example: "Handles payment processing workflow with retry logic"
+        steps:
+          $ref: '#/components/schemas/Step'
+
+    CreateRevisionRequest:
+      type: object
+      required: [name, description, steps]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        steps:
+          $ref: '#/components/schemas/Step'
+
+    UpdateRevisionRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 1000
+        steps:
+          $ref: '#/components/schemas/Step'
+
+    WorkflowRevisionResponse:
+      type: object
+      properties:
+        namespace:
+          type: string
+        id:
+          type: string
+        version:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        yamlSource:
+          type: string
+          description: Original YAML with preserved formatting and comments
+        steps:
+          $ref: '#/components/schemas/Step'
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkflowSummary:
+      type: object
+      properties:
+        namespace:
+          type: string
+        id:
+          type: string
+        revisionCount:
+          type: integer
+        activeRevisions:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    Step:
+      oneOf:
+        - $ref: '#/components/schemas/Sequence'
+        - $ref: '#/components/schemas/If'
+        - $ref: '#/components/schemas/LogTask'
+        - $ref: '#/components/schemas/WorkTask'
+      discriminator:
+        propertyName: type
+
+    Sequence:
+      type: object
+      required: [type, steps]
+      properties:
+        type:
+          type: string
+          enum: [Sequence]
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Step'
+
+    If:
+      type: object
+      required: [type, condition, then]
+      properties:
+        type:
+          type: string
+          enum: [If]
+        condition:
+          type: string
+        then:
+          $ref: '#/components/schemas/Step'
+        else:
+          $ref: '#/components/schemas/Step'
+
+    LogTask:
+      type: object
+      required: [type, message]
+      properties:
+        type:
+          type: string
+          enum: [LogTask]
+        message:
+          type: string
+
+    WorkTask:
+      type: object
+      required: [type, name]
+      properties:
+        type:
+          type: string
+          enum: [WorkTask]
+        name:
+          type: string
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI identifying the problem type
+          example: "https://maestro.io/problems/workflow-not-found"
+        title:
+          type: string
+          description: Short, human-readable summary
+          example: "Workflow Not Found"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 404
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+          example: "Workflow revision not found: production/payment-processing/5"
+        instance:
+          type: string
+          format: uri
+          description: URI identifying the specific occurrence
+
+  responses:
+    BadRequest:
+      description: Bad request (validation error, invalid YAML, invalid steps)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: "https://maestro.io/problems/workflow-not-found"
+            title: "Workflow Not Found"
+            status: 404
+            detail: "Workflow revision not found: production/payment-processing/5"
+
+    Conflict:
+      description: Conflict (workflow exists, active revision cannot be modified)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

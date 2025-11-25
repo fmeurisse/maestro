@@ -24,9 +24,23 @@ java -jar api/target/quarkus-app/quarkus-run.jar  # Run production build
 
 ### Testing
 ```bash
-mvn test                   # Run all tests
-mvn test -pl core          # Run tests for specific module
+mvn test                            # Run all tests (unit + integration)
+mvn test -pl core                   # Run tests for specific module
+mvn test -DskipIntegTests=true      # Run only unit tests (skip integration tests)
+mvn test -DskipTests=true           # Skip all tests
 ```
+
+**Test Naming Convention**:
+- Unit test files MUST end with `UnitTest.kt` (e.g., `WorkflowRevisionUnitTest.kt`)
+- Integration test files MUST end with `IntegTest.kt` (e.g., `PostgresWorkflowRevisionRepositoryIntegTest.kt`)
+- Test class names MUST match the file name
+
+**Test Execution**:
+- Tests are executed in two separate phases:
+  1. **unit-tests** phase: Runs all `*UnitTest.kt` files (fast, no external dependencies)
+  2. **integration-tests** phase: Runs all `*IntegTest.kt` files (slower, uses Testcontainers)
+- Use `-DskipIntegTests=true` to skip only integration tests during development
+- Use `-DskipTests=true` to skip all tests for quick builds
 
 ### Code Compilation
 ```bash
@@ -42,7 +56,7 @@ The project follows a layered architecture with clear separation of concerns:
 
 - **model**: Core domain model with no external dependencies
   - Contains workflow domain entities (`WorkflowRevision`, `WorkflowRevisionID`)
-  - Defines task abstractions and implementations (`Step`, `OrchestrationTask`, `Sequence`, `If`, `WorkTask`, `LogTask`)
+  - Defines task abstractions and implementations (`Step`, `OrchestrationStep`, `Sequence`, `If`, `WorkTask`, `LogTask`)
   - Pure Kotlin module with only kotlin-stdlib dependency
 
 - **core**: Business logic layer
@@ -91,6 +105,12 @@ The workflow system uses a hierarchical task model:
   - JAX-RS REST endpoints (quarkus-rest)
   - CDI dependency injection (quarkus-arc)
   - Kotlin support (quarkus-kotlin)
-  - YAML configuration (quarkus-config-yaml)
-- Configuration file: `api/src/main/resources/application.yml`
-- Default server port: 8080 (configurable in application.yml)
+- Configuration file: `api/src/main/resources/application.properties`
+- Default server port: 8080 (configurable in application.properties)
+
+## Active Technologies
+- Kotlin 2.2.0+ on Java 21 JVM + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (YAML/JSON parsing), JDBI or Exposed (database access), RFC 7807 JSON Problem library (001-workflow-management)
+- PostgreSQL 18 with JSONB for parsed workflow steps and TEXT for original YAML (001-workflow-management)
+
+## Recent Changes
+- 001-workflow-management: Added Kotlin 2.2.0+ on Java 21 JVM + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (YAML/JSON parsing), JDBI or Exposed (database access), RFC 7807 JSON Problem library

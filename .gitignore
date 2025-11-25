@@ -31,3 +31,26 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Compiled files ###
+*.class
+*.jar
+*.war
+*.ear
+
+### Logs ###
+*.log
+
+### Environment files ###
+.env
+.env.local
+.env.*.local
+
+### OS files ###
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+/ui/src/main/frontend/node_modules
+/ui/src/main/frontend/node
+/ui/src/main/frontend/dist
