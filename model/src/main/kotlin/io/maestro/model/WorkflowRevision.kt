@@ -31,9 +31,9 @@ data class WorkflowRevision(
     val description: String,
     val steps: List<Step>,
     val active: Boolean = false,
-    @JsonProperty(required = false)
+    @param:JsonProperty(required = false)
     val createdAt: Instant? = null,
-    @JsonProperty(required = false)
+    @param:JsonProperty(required = false)
     val updatedAt: Instant? = null
 ): IWorkflowRevisionID {
 
