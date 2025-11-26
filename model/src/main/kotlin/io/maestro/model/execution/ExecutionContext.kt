@@ -15,17 +15,26 @@ data class ExecutionContext(
      * Original workflow input parameters
      */
     val inputParameters: Map<String, Any>,
-    
+
     /**
      * Accumulated outputs from completed steps, keyed by stepId.
      * Steps can access outputs from previous steps via getStepOutput().
      */
-    val stepOutputs: Map<String, Any> = emptyMap()
+    val stepOutputs: Map<String, Any> = emptyMap(),
+
+    /**
+     * Step executor for orchestration steps to use for child step persistence.
+     * Required for all workflow executions to ensure complete result persistence
+     * for all steps including those executed within OrchestrationSteps.
+     *
+     * The interface is defined in model module, with implementation in core module,
+     * to avoid circular dependencies while maintaining type safety.
+     *
+     * For unit tests, provide a mock or no-op implementation.
+     */
+    val stepExecutor: IStepExecutor
 ) {
-    init {
-        require(inputParameters != null) { "ExecutionContext.inputParameters must not be null" }
-    }
-    
+
     /**
      * Returns a new ExecutionContext with the specified step output added.
      * 

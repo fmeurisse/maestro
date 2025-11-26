@@ -10,16 +10,17 @@ data class If(
     val ifTrue: Step,      // This can be a TaskList or a single Action
     val ifFalse: Step? = null // This can also be a TaskList or a single Action
 ) : OrchestrationStep {
-    
+
     override fun execute(context: ExecutionContext): Pair<StepStatus, ExecutionContext> {
         val conditionResult = evaluateCondition(condition, context)
-        
+
         return if (conditionResult) {
-            // Execute ifTrue branch
-            ifTrue.execute(context)
+            // Execute ifTrue branch with automatic persistence
+            context.stepExecutor.executeAndPersist(ifTrue, context)
         } else {
             // Execute ifFalse branch if provided, otherwise no-op
-            ifFalse?.execute(context) ?: Pair(StepStatus.COMPLETED, context)
+            ifFalse?.let { context.stepExecutor.executeAndPersist(it, context) }
+                ?: Pair(StepStatus.COMPLETED, context)
         }
     }
     
