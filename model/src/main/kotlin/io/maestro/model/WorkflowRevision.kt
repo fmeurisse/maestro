@@ -2,6 +2,7 @@ package io.maestro.model
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.maestro.model.errors.InvalidWorkflowRevisionException
+import io.maestro.model.parameters.ParameterDefinition
 import io.maestro.model.steps.Step
 import java.time.Instant
 
@@ -18,6 +19,7 @@ import java.time.Instant
  * @property version Sequential version number (1, 2, 3...)
  * @property name Human-readable workflow name
  * @property description Workflow purpose and behavior description (max 1000 chars)
+ * @property parameters List of parameter definitions for workflow input (optional)
  * @property steps Parsed workflow step tree
  * @property active Whether this revision is active for execution
  * @property createdAt UTC timestamp when revision was created (immutable)
@@ -29,6 +31,8 @@ data class WorkflowRevision(
     override val version: Int = 0,
     val name: String,
     val description: String,
+    @param:JsonProperty(required = false)
+    val parameters: List<ParameterDefinition> = emptyList(),
     val steps: List<Step>,
     val active: Boolean = false,
     @param:JsonProperty(required = false)
@@ -66,6 +70,7 @@ data class WorkflowRevision(
             version: Int,
             name: String,
             description: String,
+            parameters: List<ParameterDefinition> = emptyList(),
             steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
@@ -74,7 +79,7 @@ data class WorkflowRevision(
             validate(namespace, id, version, name, description)
             return create(
                 namespace, id, version, name, description,
-                steps, active, createdAt, updatedAt
+                parameters, steps, active, createdAt, updatedAt
             )
         }
 
@@ -84,13 +89,14 @@ data class WorkflowRevision(
             version: Int = 0,
             name: String,
             description: String,
+            parameters: List<ParameterDefinition> = emptyList(),
             steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
             updatedAt: Instant = createdAt
         ): WorkflowRevision = WorkflowRevision(
             namespace, id, version, name, description,
-            steps, active, createdAt, updatedAt
+            parameters, steps, active, createdAt, updatedAt
         )
 
         fun validate(
