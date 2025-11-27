@@ -23,7 +23,12 @@
       "Bash(npm run build:*)",
       "Bash(npm run:*)",
       "Bash(npm test)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(mvn test-compile:*)",
+      "Bash(if [ -d \"/Users/fmeurisse/Projects/Perso/maestro/specs/002-workflow-execution/checklists\" ])",
+      "Bash(then echo \"EXISTS\")",
+      "Bash(else echo \"NONE\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

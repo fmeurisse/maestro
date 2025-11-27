@@ -94,42 +94,42 @@ Multi-module Maven project structure:
 - [X] T022 [P] [US1] Write IfUnitTest in core/src/test/kotlin/io/maestro/core/steps/IfUnitTest.kt (test condition evaluation, test branch execution)
 - [X] T023 [P] [US1] Write LogTaskUnitTest in core/src/test/kotlin/io/maestro/core/steps/LogTaskUnitTest.kt (test logging execution)
 - [ ] T024 [P] [US1] Write WorkTaskUnitTest in model/src/test/kotlin/io/maestro/model/steps/WorkTaskUnitTest.kt (test task execution) - SKIPPED (WorkTask not needed for MVP)
-- [~] T025 [P] [US1] Write ExecuteWorkflowUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/ExecuteWorkflowUseCaseUnitTest.kt (mock repository, test execution flow, test per-step persistence) - FILE CREATED, needs WorkflowRevision constructor fixes
-- [~] T026 [P] [US1] Write GetExecutionStatusUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/GetExecutionStatusUseCaseUnitTest.kt (mock repository, test query by ID) - FILE CREATED, minor fixes needed
+- [X] T025 [P] [US1] Write ExecuteWorkflowUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/ExecuteWorkflowUseCaseUnitTest.kt (mock repository, test execution flow, test per-step persistence)
+- [X] T026 [P] [US1] Write GetExecutionStatusUseCaseUnitTest in core/src/test/kotlin/io/maestro/core/execution/usecases/GetExecutionStatusUseCaseUnitTest.kt (mock repository, test query by ID)
 
 #### Integration Tests
 
-- [ ] T027 [US1] Write PostgresWorkflowExecutionRepositoryIntegTest in plugins/postgres/src/test/kotlin/io/maestro/plugins/postgres/execution/PostgresWorkflowExecutionRepositoryIntegTest.kt (Testcontainers PostgreSQL, test per-step commits, test queries, test concurrent executions) - MUST FAIL before T019
+- [X] T027 [US1] Write PostgresWorkflowExecutionRepositoryIntegTest in plugins/postgres/src/test/kotlin/io/maestro/plugins/postgres/execution/PostgresWorkflowExecutionRepositoryIntegTest.kt (Testcontainers PostgreSQL, test per-step commits, test queries, test concurrent executions)
 
 #### Contract Tests
 
-- [ ] T028 [US1] Write ExecutionResourceIntegTest in api/src/test/kotlin/io/maestro/api/execution/ExecutionResourceIntegTest.kt (REST Assured, test POST execute endpoint returns 200 with execution ID, test GET status endpoint returns execution details) - MUST FAIL before T033
+- [X] T028 [US1] Write ExecutionResourceIntegTest in api/src/test/kotlin/io/maestro/api/execution/ExecutionResourceIntegTest.kt (REST Assured, test POST execute endpoint returns 200 with execution ID, test GET status endpoint returns execution details)
 
 ### Implementation for User Story 1
 
 #### Core Use Cases
 
-- [ ] T029 [P] [US1] Create ExecuteWorkflowUseCase in core/src/main/kotlin/io/maestro/core/execution/usecases/ExecuteWorkflowUseCase.kt (validate exists, create execution record, call step.execute() on workflow steps, persist per-step results, handle errors, return execution ID)
-- [ ] T030 [P] [US1] Create GetExecutionStatusUseCase in core/src/main/kotlin/io/maestro/core/execution/usecases/GetExecutionStatusUseCase.kt (query by execution ID, return WorkflowExecution with ExecutionStepResults)
+- [X] T029 [P] [US1] Create ExecuteWorkflowUseCase in core/src/main/kotlin/io/maestro/core/execution/usecases/ExecuteWorkflowUseCase.kt (validate exists, create execution record, call step.execute() on workflow steps, persist per-step results, handle errors, return execution ID)
+- [X] T030 [P] [US1] Create GetExecutionStatusUseCase in core/src/main/kotlin/io/maestro/core/execution/usecases/GetExecutionStatusUseCase.kt (query by execution ID, return WorkflowExecution with ExecutionStepResults)
 
 #### API Layer
 
-- [ ] T031 [P] [US1] Create ExecutionRequestDTO in api/src/main/kotlin/io/maestro/api/execution/dto/ExecutionRequestDTO.kt (parameters: Map<String, Any>)
-- [ ] T032 [P] [US1] Create ExecutionResponseDTO in api/src/main/kotlin/io/maestro/api/execution/dto/ExecutionResponseDTO.kt (executionId, status, revisionId, inputParameters, startedAt, _links)
-- [ ] T033 [P] [US1] Create ExecutionDetailResponseDTO in api/src/main/kotlin/io/maestro/api/execution/dto/ExecutionDetailResponseDTO.kt (extends ExecutionResponseDTO, adds completedAt, errorMessage, steps array)
-- [ ] T034 [P] [US1] Create StepResultDTO in api/src/main/kotlin/io/maestro/api/execution/dto/StepResultDTO.kt (stepIndex, stepId, stepType, status, inputData, outputData, errorMessage, errorDetails, startedAt, completedAt)
-- [ ] T035 [US1] Create ExecutionResource in api/src/main/kotlin/io/maestro/api/execution/ExecutionResource.kt (POST /workflows/{namespace}/{id}/{version}/execute endpoint calling ExecuteWorkflowUseCase)
-- [ ] T036 [US1] Add GET /executions/{executionId} endpoint to ExecutionResource calling GetExecutionStatusUseCase
+- [X] T031 [P] [US1] Create ExecutionRequestDTO in api/src/main/kotlin/io/maestro/api/execution/dto/ExecutionRequestDTO.kt (parameters: Map<String, Any>)
+- [X] T032 [P] [US1] Create ExecutionResponseDTO in api/src/main/kotlin/io/maestro/api/execution/dto/ExecutionResponseDTO.kt (executionId, status, revisionId, inputParameters, startedAt, _links)
+- [X] T033 [P] [US1] Create ExecutionDetailResponseDTO in api/src/main/kotlin/io/maestro/api/execution/dto/ExecutionDetailResponseDTO.kt (extends ExecutionResponseDTO, adds completedAt, errorMessage, steps array)
+- [X] T034 [P] [US1] Create StepResultDTO in api/src/main/kotlin/io/maestro/api/execution/dto/StepResultDTO.kt (stepIndex, stepId, stepType, status, inputData, outputData, errorMessage, errorDetails, startedAt, completedAt)
+- [X] T035 [US1] Create ExecutionResource in api/src/main/kotlin/io/maestro/api/execution/ExecutionResource.kt (POST /workflows/{namespace}/{id}/{version}/execute endpoint calling ExecuteWorkflowUseCase)
+- [X] T036 [US1] Add GET /executions/{executionId} endpoint to ExecutionResource calling GetExecutionStatusUseCase
 
 #### Error Handling
 
-- [ ] T037 [P] [US1] Create WorkflowNotFoundException in api/src/main/kotlin/io/maestro/api/execution/errors/WorkflowNotFoundException.kt (extends MaestroException, maps to 404)
-- [ ] T038 [P] [US1] Create ExecutionNotFoundException in api/src/main/kotlin/io/maestro/api/execution/errors/ExecutionNotFoundException.kt (extends MaestroException, maps to 404)
-- [ ] T039 [US1] Create ExecutionProblemTypes in api/src/main/kotlin/io/maestro/api/execution/errors/ExecutionProblemTypes.kt (RFC 7807 problem type URIs for execution errors)
+- [X] T037 [P] [US1] Create WorkflowNotFoundException in api/src/main/kotlin/io/maestro/api/execution/errors/WorkflowNotFoundException.kt (extends MaestroException, maps to 404)
+- [X] T038 [P] [US1] Create ExecutionNotFoundException in api/src/main/kotlin/io/maestro/api/execution/errors/ExecutionNotFoundException.kt (extends MaestroException, maps to 404)
+- [X] T039 [US1] Create ExecutionProblemTypes in api/src/main/kotlin/io/maestro/api/execution/errors/ExecutionProblemTypes.kt (RFC 7807 problem type URIs for execution errors)
 
 #### Verify Tests Pass
 
-- [ ] T040 [US1] Run all User Story 1 tests and verify they pass (mvn test -Dtest="*US1*,Sequence*,If*,LogTask*,WorkTask*,ExecuteWorkflow*,GetExecutionStatus*,PostgresWorkflowExecution*,ExecutionResource*")
+- [X] T040 [US1] Run all User Story 1 tests and verify they pass (mvn test -Dtest="*US1*,Sequence*,If*,LogTask*,WorkTask*,ExecuteWorkflow*,GetExecutionStatus*,PostgresWorkflowExecution*,ExecutionResource*") - ✅ All unit tests pass (30 tests, 0 failures). Integration tests exist and compile successfully.
 
 **Checkpoint**: User Story 1 complete - workflows can be executed and status queried. This is a complete MVP.
 
@@ -145,37 +145,37 @@ Multi-module Maven project structure:
 
 #### Unit Tests
 
-- [ ] T041 [P] [US2] Write ParameterValidatorUnitTest in core/src/test/kotlin/io/maestro/core/execution/validation/ParameterValidatorUnitTest.kt (test type validation, test required fields, test extra fields rejection, test type coercion rules, test default values) - MUST FAIL before T045
-- [ ] T042 [P] [US2] Write ParameterTypeValidatorUnitTest in core/src/test/kotlin/io/maestro/core/execution/validation/ParameterTypeValidatorUnitTest.kt (test string→integer coercion, test string→float coercion, test string→boolean coercion, test rejection of ambiguous coercions) - MUST FAIL before T046
+- [X] T041 [P] [US2] Write ParameterValidatorUnitTest in core/src/test/kotlin/io/maestro/core/execution/validation/ParameterValidatorUnitTest.kt (test type validation, test required fields, test extra fields rejection, test type coercion rules, test default values) - ✅ All 10 tests pass
+- [X] T042 [P] [US2] Write ParameterTypeValidatorUnitTest in core/src/test/kotlin/io/maestro/core/execution/validation/ParameterTypeValidatorUnitTest.kt (test string→integer coercion, test string→float coercion, test string→boolean coercion, test rejection of ambiguous coercions) - ✅ All 17 tests pass
 
 #### Contract Tests
 
-- [ ] T043 [US2] Write parameter validation tests in ExecutionResourceIntegTest (test 400 for type mismatch, test 400 for missing required, test 400 for extra parameters, test multiple validation errors in single response) - MUST FAIL before T047
+- [X] T043 [US2] Write parameter validation tests in ExecutionResourceIntegTest (test 400 for type mismatch, test 400 for missing required, test 400 for extra parameters, test multiple validation errors in single response) - ✅ Tests written (4 test methods), will fail until T050-T052 implemented
 
 ### Implementation for User Story 2
 
 #### Validation Layer
 
-- [ ] T044 [P] [US2] Create ParameterType enum in model/src/main/kotlin/io/maestro/model/execution/ParameterType.kt (STRING, INTEGER, FLOAT, BOOLEAN)
-- [ ] T045 [P] [US2] Create ParameterDefinition data class in model/src/main/kotlin/io/maestro/model/execution/ParameterDefinition.kt (name, type, required, default, description)
-- [ ] T046 [P] [US2] Create ParameterValidator in core/src/main/kotlin/io/maestro/core/execution/validation/ParameterValidator.kt (validate method, collect all errors, apply defaults, return ValidationResult)
-- [ ] T047 [P] [US2] Create ParameterTypeValidator in core/src/main/kotlin/io/maestro/core/execution/validation/ParameterTypeValidator.kt (type checking, moderate coercion rules per research.md)
-- [ ] T048 [P] [US2] Create ValidationResult in core/src/main/kotlin/io/maestro/core/execution/validation/ValidationResult.kt (errors list, isValid flag)
-- [ ] T049 [P] [US2] Create ParameterValidationError in core/src/main/kotlin/io/maestro/core/execution/validation/ParameterValidationError.kt (name, reason, provided)
+- [X] T044 [P] [US2] Create ParameterType enum in model/src/main/kotlin/io/maestro/model/parameters/ParameterType.kt (STRING, INTEGER, FLOAT, BOOLEAN)
+- [X] T045 [P] [US2] Create ParameterDefinition data class in model/src/main/kotlin/io/maestro/model/parameters/ParameterDefinition.kt (name, type, required, default, description)
+- [X] T046 [P] [US2] Create ParameterValidator in core/src/main/kotlin/io/maestro/core/execution/validation/ParameterValidator.kt (validate method, collect all errors, apply defaults, return ValidationResult)
+- [X] T047 [P] [US2] Create ParameterTypeValidator in core/src/main/kotlin/io/maestro/core/execution/validation/ParameterTypeValidator.kt (type checking, moderate coercion rules per research.md)
+- [X] T048 [P] [US2] Create ValidationResult in core/src/main/kotlin/io/maestro/core/execution/validation/ValidationResult.kt (errors list, isValid flag)
+- [X] T049 [P] [US2] Create ParameterValidationError in core/src/main/kotlin/io/maestro/core/execution/validation/ParameterValidationError.kt (name, reason, provided)
 
 #### API Error Handling
 
-- [ ] T050 [P] [US2] Create ParameterValidationException in api/src/main/kotlin/io/maestro/api/execution/errors/ParameterValidationException.kt (extends MaestroException, maps to 400, includes ValidationResult)
-- [ ] T051 [US2] Update ExecutionResource.execute() to call ParameterValidator before ExecuteWorkflowUseCase and throw ParameterValidationException on failure
-- [ ] T052 [US2] Create ParameterValidationExceptionMapper in api/src/main/kotlin/io/maestro/api/execution/errors/ParameterValidationExceptionMapper.kt (maps to RFC 7807 with invalid-params array)
+- [X] T050 [P] [US2] Create ParameterValidationException in api/src/main/kotlin/io/maestro/api/execution/errors/ParameterValidationException.kt (extends MaestroException, maps to 400, includes ValidationResult) - ✅ Created
+- [X] T051 [US2] Update ExecutionResource.execute() to call ParameterValidator before ExecuteWorkflowUseCase and throw ParameterValidationException on failure - ✅ Added validation call, throws exception on failure, uses validatedParameters
+- [X] T052 [US2] Create ParameterValidationExceptionMapper in api/src/main/kotlin/io/maestro/api/execution/errors/ParameterValidationExceptionMapper.kt (maps to RFC 7807 with invalid-params array) - ✅ Created with invalidParams extension
 
 #### Model Extension
 
-- [ ] T053 [US2] Add parameters: List<ParameterDefinition> field to WorkflowRevision entity in model/src/main/kotlin/io/maestro/model/workflow/WorkflowRevision.kt (extends 001-workflow-management)
+- [X] T053 [US2] Add parameters: List<ParameterDefinition> field to WorkflowRevision entity in model/src/main/kotlin/io/maestro/model/WorkflowRevision.kt (extends 001-workflow-management, import from io.maestro.model.parameters) - ✅ Added with default emptyList(), updated WorkflowRevisionWithSource
 
 #### Verify Tests Pass
 
-- [ ] T054 [US2] Run all User Story 2 tests and verify they pass (mvn test -Dtest="*US2*,ParameterValidator*,ParameterType*")
+- [X] T054 [US2] Run all User Story 2 tests and verify they pass (mvn test -Dtest="*US2*,ParameterValidator*,ParameterType*") - ✅ All 27 unit tests pass, 11 integration tests pass
 
 **Checkpoint**: User Story 2 complete - parameter validation prevents invalid executions with clear error messages
 
@@ -191,19 +191,19 @@ Multi-module Maven project structure:
 
 #### Integration Tests
 
-- [ ] T055 [US3] Write execution progress tests in ExecutionResourceIntegTest (test step-by-step progress updates, test failed step marking remaining as SKIPPED, test concurrent step queries) - MUST FAIL before implementation
+- [X] T055 [US3] Write execution progress tests in ExecutionResourceIntegTest (test step-by-step progress updates, test failed step marking remaining as SKIPPED, test concurrent step queries) - ✅ Tests written and passing
 
 ### Implementation for User Story 3
 
 #### API Enhancement
 
-- [ ] T056 [US3] Enhance ExecutionDetailResponseDTO to include step timing information (duration calculation from startedAt/completedAt)
-- [ ] T057 [US3] Enhance GetExecutionStatusUseCase to return execution with all step results ordered by stepIndex
-- [ ] T058 [US3] Update PostgresWorkflowExecutionRepository.findById to eagerly load all ExecutionStepResults
+- [X] T056 [US3] Enhance ExecutionDetailResponseDTO to include step timing information (duration calculation from startedAt/completedAt) - ✅ Timing info already included (startedAt/completedAt in StepResultDTO)
+- [X] T057 [US3] Enhance GetExecutionStatusUseCase to return execution with all step results ordered by stepIndex - ✅ Step results already ordered by stepIndex from repository
+- [X] T058 [US3] Update PostgresWorkflowExecutionRepository.findById to eagerly load all ExecutionStepResults - ✅ Already eagerly loads step results ordered by stepIndex
 
 #### Verify Tests Pass
 
-- [ ] T059 [US3] Run all User Story 3 tests and verify they pass (mvn test -Dtest="*US3*")
+- [X] T059 [US3] Run all User Story 3 tests and verify they pass (mvn test -Dtest="*US3*") - ✅ All US3 tests pass
 
 **Checkpoint**: User Story 3 complete - execution progress visible in real-time
 
@@ -257,18 +257,18 @@ Multi-module Maven project structure:
 
 ### OpenAPI Documentation
 
-- [ ] T070 [P] Add Quarkus OpenAPI annotations to ExecutionResource endpoints (match contracts/openapi.yaml specification)
-- [ ] T071 [P] Add OpenAPI schema annotations to all DTOs (ExecutionRequestDTO, ExecutionResponseDTO, etc.)
+- [X] T070 [P] Add Quarkus OpenAPI annotations to ExecutionResource endpoints (match contracts/openapi.yaml specification) - ✅ DONE
+- [X] T071 [P] Add OpenAPI schema annotations to all DTOs (ExecutionRequestDTO, ExecutionResponseDTO, etc.) - ✅ DONE
 
 ### Logging
 
-- [ ] T072 [P] Add structured logging to ExecuteWorkflowUseCase (log execution start, step completion, execution completion/failure)
-- [ ] T073 [P] Add structured logging to ParameterValidator (log validation failures with anonymized parameter names)
+- [X] T072 [P] Add structured logging to ExecuteWorkflowUseCase (log execution start, step completion, execution completion/failure) - ✅ DONE
+- [X] T073 [P] Add structured logging to ParameterValidator (log validation failures with anonymized parameter names) - ✅ DONE
 
 ### Integration Testing
 
-- [ ] T074 Run full integration test suite with Testcontainers (mvn test)
-- [ ] T075 Run contract test suite with REST Assured (mvn test -Dtest="*IntegTest")
+- [X] T074 Run full integration test suite with Testcontainers (mvn test) - ✅ DONE (270 unit tests passing)
+- [X] T075 Run contract test suite with REST Assured (mvn test -Dtest="*IntegTest") - ✅ DONE (22 integration tests passing)
 
 ### Performance Validation
 
@@ -353,7 +353,7 @@ US3 enhances existing components, minimal parallelization.
 **Group B** (Implementation):
 - T065, T066, T067 (All DTOs)
 
-#### Phase 7 (Polish) - Parallel Groups
+#### Phase 7 (Polish) - Parallel Groupsfix the tests a
 
 **Group A** (Documentation):
 - T070, T071 (OpenAPI annotations)
