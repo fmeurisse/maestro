@@ -1,20 +1,29 @@
 package io.maestro.api
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.core.IWorkflowRevisionRepository
-import io.maestro.core.WorkflowYamlParser
-import io.maestro.core.usecase.ActivateRevisionUseCase
-import io.maestro.core.usecase.CreateRevisionUseCase
-import io.maestro.core.usecase.CreateWorkflowUseCase
-import io.maestro.core.usecase.DeactivateRevisionUseCase
-import io.maestro.core.usecase.DeleteRevisionUseCase
-import io.maestro.core.usecase.DeleteWorkflowUseCase
-import io.maestro.core.usecase.UpdateRevisionUseCase
+import io.maestro.core.workflows.IWorkflowRevisionRepository
+import io.maestro.core.workflows.WorkflowYamlParser
+import io.maestro.core.workflows.usecases.ActivateRevisionUseCase
+import io.maestro.core.workflows.usecases.CreateRevisionUseCase
+import io.maestro.core.workflows.usecases.CreateWorkflowUseCase
+import io.maestro.core.workflows.usecases.DeactivateRevisionUseCase
+import io.maestro.core.workflows.usecases.DeleteRevisionUseCase
+import io.maestro.core.workflows.usecases.DeleteWorkflowUseCase
+import io.maestro.core.workflows.usecases.UpdateRevisionUseCase
 import io.maestro.api.errors.InvalidCurrentUpdatedAtHeaderException
+import io.maestro.core.executions.usecases.GetExecutionHistoryUseCase
+import io.maestro.core.executions.IWorkflowExecutionRepository
+import io.maestro.api.execution.dto.ExecutionHistoryResponseDTO
+import io.maestro.api.execution.dto.ExecutionSummaryDTO
+import io.maestro.api.execution.dto.LinkDTO
+import io.maestro.api.execution.dto.PaginationDTO
+import io.maestro.api.execution.errors.WorkflowNotFoundException
 import io.maestro.model.WorkflowID
+import io.maestro.model.execution.ExecutionStatus
 import io.maestro.model.WorkflowRevisionID
 import jakarta.inject.Inject
 import jakarta.ws.rs.*
+import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import java.net.URI
 
@@ -35,7 +44,9 @@ class WorkflowResource @Inject constructor(
     private val deleteRevisionUseCase: DeleteRevisionUseCase,
     private val deleteWorkflowUseCase: DeleteWorkflowUseCase,
     private val repository: IWorkflowRevisionRepository,
-    private val yamlParser: WorkflowYamlParser  // For serializing responses only
+    private val yamlParser: WorkflowYamlParser,  // For serializing responses only
+    private val getExecutionHistoryUseCase: GetExecutionHistoryUseCase,
+    private val executionRepository: IWorkflowExecutionRepository
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -437,6 +448,121 @@ class WorkflowResource @Inject constructor(
 
         } catch (e: Exception) {
             logger.error(e) { "Failed to delete workflow: ${e.message}" }
+            throw e // Let exception mapper handle it
+        }
+    }
+
+    /**
+     * Get execution history for a workflow.
+     *
+     * Endpoint: GET /api/workflows/{namespace}/{id}/executions
+     *
+     * Implements User Story 4 (US4): View Execution History.
+     * Returns paginated list of executions with optional filtering by version and status.
+     *
+     * @param namespace The workflow namespace
+     * @param id The workflow identifier
+     * @param version Optional version filter (null = all versions)
+     * @param status Optional status filter (null = all statuses)
+     * @param limit Maximum number of results to return (default: 20, max: 100)
+     * @param offset Number of results to skip for pagination (default: 0)
+     * @return 200 OK with execution history, or 404 if workflow not found
+     */
+    @GET
+    @Path("/{namespace}/{id}/executions")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun getExecutionHistory(
+        @PathParam("namespace") namespace: String,
+        @PathParam("id") id: String,
+        @QueryParam("version") version: Int?,
+        @QueryParam("status") statusString: String?,
+        @QueryParam("limit") limit: Int?,
+        @QueryParam("offset") offset: Int?
+    ): Response {
+        logger.info { "Received history query for workflow: $namespace/$id, version=$version, status=$statusString" }
+
+        try {
+            // Verify workflow exists (check if any revision exists)
+            val workflowIdObj = WorkflowID(namespace, id)
+            val workflowExists = repository.exists(workflowIdObj)
+            if (!workflowExists) {
+                throw WorkflowNotFoundException(WorkflowRevisionID(namespace, id, 1))
+            }
+
+            // Parse status filter
+            val status = statusString?.let {
+                try {
+                    ExecutionStatus.valueOf(it.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    logger.warn { "Invalid status filter: $statusString, ignoring" }
+                    null
+                }
+            }
+
+            // Get history via use case
+            val historyResult = getExecutionHistoryUseCase.getHistory(
+                namespace = namespace,
+                workflowId = id,
+                version = version,
+                status = status,
+                limit = limit ?: 20,
+                offset = offset ?: 0
+            )
+
+            // Convert executions to summary DTOs with step statistics
+            val executionSummaries = historyResult.executions.map { execution: io.maestro.model.execution.WorkflowExecution ->
+                val stepResults = executionRepository.findStepResultsByExecutionId(execution.executionId)
+                ExecutionSummaryDTO.fromDomain(execution, stepResults)
+            }
+
+            // Build pagination metadata
+            val pagination = PaginationDTO.create(
+                total = historyResult.totalCount,
+                limit = limit ?: 20,
+                offset = offset ?: 0
+            )
+
+            // Build HATEOAS links
+            val basePath = "/api/workflows/$namespace/$id/executions"
+            val queryParams = mutableListOf<String>()
+            version?.let { queryParams.add("version=$it") }
+            statusString?.let { queryParams.add("status=$it") }
+            queryParams.add("limit=${limit ?: 20}")
+            val queryString = if (queryParams.isNotEmpty()) "?${queryParams.joinToString("&")}" else ""
+            
+            val links = mutableMapOf<String, LinkDTO>()
+            links["self"] = LinkDTO("$basePath$queryString")
+            links["workflow"] = LinkDTO("/api/workflows/$namespace/$id")
+            
+            val nextOffset = (offset ?: 0) + (limit ?: 20)
+            if (nextOffset < historyResult.totalCount) {
+                val nextQueryParams = mutableListOf<String>()
+                version?.let { nextQueryParams.add("version=$it") }
+                statusString?.let { nextQueryParams.add("status=$it") }
+                nextQueryParams.add("limit=${limit ?: 20}")
+                nextQueryParams.add("offset=$nextOffset")
+                links["next"] = LinkDTO("$basePath?${nextQueryParams.joinToString("&")}")
+            }
+
+            logger.info { "Successfully retrieved execution history: $namespace/$id (${executionSummaries.size} executions)" }
+
+            // Return 200 OK with history
+            return Response.ok()
+                .entity(ExecutionHistoryResponseDTO(
+                    executions = executionSummaries,
+                    pagination = pagination,
+                    links = links
+                ))
+                .build()
+
+        } catch (e: WorkflowNotFoundException) {
+            logger.error(e) { "Workflow not found: $namespace/$id" }
+            throw e
+        } catch (e: IllegalArgumentException) {
+            logger.error(e) { "Invalid request parameters: ${e.message}" }
+            throw e
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to retrieve execution history: ${e.message}" }
             throw e // Let exception mapper handle it
         }
     }

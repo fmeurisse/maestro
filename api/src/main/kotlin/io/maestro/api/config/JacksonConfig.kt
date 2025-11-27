@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.core.steps.StepTypeRegistry
-import io.maestro.core.steps.registerStepTypes
+import io.maestro.core.workflows.steps.StepTypeRegistry
+import io.maestro.core.workflows.steps.registerStepTypes
 import io.quarkus.jackson.ObjectMapperCustomizer
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Singleton
