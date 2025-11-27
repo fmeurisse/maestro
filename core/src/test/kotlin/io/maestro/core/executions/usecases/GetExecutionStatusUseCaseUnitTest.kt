@@ -1,19 +1,16 @@
-package io.maestro.core.execution.usecases
+package io.maestro.core.executions.usecases
 
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.maestro.core.execution.repository.IWorkflowExecutionRepository
+import io.maestro.core.executions.IWorkflowExecutionRepository
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.execution.ExecutionStatus
-import io.maestro.model.execution.StepStatus
 import io.maestro.model.execution.WorkflowExecution
 import io.maestro.model.execution.WorkflowExecutionID
-import io.maestro.model.execution.ExecutionStepResult
 import io.mockk.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.time.Instant
 
 class GetExecutionStatusUseCaseUnitTest {

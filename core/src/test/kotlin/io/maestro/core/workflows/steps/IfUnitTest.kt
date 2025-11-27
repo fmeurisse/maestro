@@ -1,7 +1,6 @@
 package io.maestro.core.workflows.steps
 
-import io.maestro.core.execution.NoOpStepExecutor
-import io.maestro.core.workflows.steps.If
+import io.maestro.core.executions.NoOpStepExecutor
 import io.maestro.model.execution.ExecutionContext
 import io.maestro.model.execution.StepStatus
 import io.maestro.model.steps.Step

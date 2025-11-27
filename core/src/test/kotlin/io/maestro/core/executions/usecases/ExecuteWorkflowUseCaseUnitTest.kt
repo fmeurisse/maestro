@@ -1,12 +1,10 @@
-package io.maestro.core.execution.usecases
+package io.maestro.core.executions.usecases
 
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.maestro.core.IWorkflowRevisionRepository
-import io.maestro.core.execution.repository.IWorkflowExecutionRepository
-import io.maestro.core.steps.LogTask
-import io.maestro.core.steps.Sequence
+import io.maestro.core.workflows.IWorkflowRevisionRepository
+import io.maestro.core.executions.IWorkflowExecutionRepository
+import io.maestro.core.workflows.steps.LogTask
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.execution.ExecutionContext
@@ -48,11 +46,15 @@ class ExecuteWorkflowUseCaseUnitTest {
         val step1 = LogTask("Step 1: Initialize")
         val step2 = LogTask("Step 2: Process")
         val workflow = WorkflowRevision(
-            revisionId = revisionId,
-            steps = Sequence(listOf(step1, step2)),
+            namespace = "test-ns",
+            id = "test-workflow",
+            version = 1,
+            name = "Test Workflow",
+            description = "Test workflow for execution",
+            steps = listOf(step1, step2),
+            active = true,
             createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-            active = true
+            updatedAt = Instant.now()
         )
 
         val inputParameters = mapOf("userId" to "user123", "retryCount" to 3)
@@ -110,11 +112,15 @@ class ExecuteWorkflowUseCaseUnitTest {
         val step1 = LogTask("Step 1")
         val step2 = LogTask("Step 2")
         val workflow = WorkflowRevision(
-            revisionId = revisionId,
-            steps = Sequence(listOf(step1, step2)),
+            namespace = "test-ns",
+            id = "test-workflow",
+            version = 1,
+            name = "Test Workflow",
+            description = "Test workflow for crash recovery",
+            steps = listOf(step1, step2),
+            active = true,
             createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-            active = true
+            updatedAt = Instant.now()
         )
 
         // Mock setup
@@ -140,11 +146,15 @@ class ExecuteWorkflowUseCaseUnitTest {
         val revisionId = WorkflowRevisionID("test-ns", "test-workflow", 1)
         val failingStep = FailingStep()
         val workflow = WorkflowRevision(
-            revisionId = revisionId,
-            steps = failingStep,
+            namespace = "test-ns",
+            id = "test-workflow",
+            version = 1,
+            name = "Test Workflow",
+            description = "Test workflow with failing step",
+            steps = listOf(failingStep),
+            active = true,
             createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-            active = true
+            updatedAt = Instant.now()
         )
 
         // Mock setup
@@ -188,16 +198,21 @@ class ExecuteWorkflowUseCaseUnitTest {
         // Given: A workflow that requires specific parameters
         val revisionId = WorkflowRevisionID("test-ns", "test-workflow", 1)
         val workflow = WorkflowRevision(
-            revisionId = revisionId,
-            steps = LogTask("Test"),
+            namespace = "test-ns",
+            id = "test-workflow",
+            version = 1,
+            name = "Test Workflow",
+            description = "Test workflow for parameter validation",
+            steps = listOf(LogTask("Test")),
+            active = true,
             createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-            active = true
+            updatedAt = Instant.now()
         )
 
         // Mock setup
         every { workflowRevisionRepository.findById(revisionId) } returns workflow
         every { executionRepository.createExecution(any()) } answers { firstArg() }
+        every { executionRepository.saveStepResult(any()) } answers { firstArg() }
         every { executionRepository.updateExecutionStatus(any(), any(), any()) } just Runs
 
         // When: Executing with parameters
@@ -217,16 +232,21 @@ class ExecuteWorkflowUseCaseUnitTest {
         // Given: A simple workflow
         val revisionId = WorkflowRevisionID("test-ns", "test-workflow", 1)
         val workflow = WorkflowRevision(
-            revisionId = revisionId,
-            steps = LogTask("Test"),
+            namespace = "test-ns",
+            id = "test-workflow",
+            version = 1,
+            name = "Test Workflow",
+            description = "Test workflow for unique ID generation",
+            steps = listOf(LogTask("Test")),
+            active = true,
             createdAt = Instant.now(),
-            updatedAt = Instant.now(),
-            active = true
+            updatedAt = Instant.now()
         )
 
         // Mock setup
         every { workflowRevisionRepository.findById(revisionId) } returns workflow
         every { executionRepository.createExecution(any()) } answers { firstArg() }
+        every { executionRepository.saveStepResult(any()) } answers { firstArg() }
         every { executionRepository.updateExecutionStatus(any(), any(), any()) } just Runs
 
         // When: Executing multiple times

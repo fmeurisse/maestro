@@ -1,6 +1,5 @@
-package io.maestro.core.execution
+package io.maestro.core.executions
 
-import io.maestro.core.execution.repository.IWorkflowExecutionRepository
 import io.maestro.model.execution.*
 import io.maestro.model.steps.Step
 import io.maestro.model.util.NanoID
@@ -43,11 +42,12 @@ class StepExecutor(
         val startTime = Instant.now()
 
         // Execute the step
+        var errorInfo: ErrorInfo? = null
         val (status, updatedContext) = try {
             step.execute(context)
         } catch (e: Exception) {
             // Step execution failed with exception
-            val errorInfo = ErrorInfo(
+            errorInfo = ErrorInfo(
                 errorType = e::class.simpleName ?: "Unknown",
                 stackTrace = e.stackTraceToString(),
                 stepInputs = null // TODO: Extract from context if needed
@@ -70,7 +70,7 @@ class StepExecutor(
             inputData = null, // TODO: Extract input data from context
             outputData = null, // TODO: Extract output data from updatedContext
             errorMessage = if (status == StepStatus.FAILED) "Step execution failed" else null,
-            errorDetails = null, // TODO: Capture error details
+            errorDetails = errorInfo,
             startedAt = startTime,
             completedAt = endTime
         )
