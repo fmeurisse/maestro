@@ -1,5 +1,7 @@
 package io.maestro.model.execution
 
+import com.fasterxml.jackson.annotation.JsonFormat
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.maestro.model.util.NanoID
 import java.time.Instant
 
@@ -80,12 +82,16 @@ data class ExecutionStepResult(
      * Step execution start time
      * Immutable
      */
+    @param:JsonProperty("startedAt")
+    @param:JsonFormat(shape = JsonFormat.Shape.STRING)
     val startedAt: Instant,
     
     /**
      * Step execution completion time
      * Immutable, must be >= startedAt
      */
+    @param:JsonProperty("completedAt")
+    @param:JsonFormat(shape = JsonFormat.Shape.STRING)
     val completedAt: Instant
 ) {
     init {
@@ -93,18 +99,12 @@ data class ExecutionStepResult(
         require(NanoID.isValid(resultId, minSize = 1, maxSize = 100)) {
             "ExecutionStepResult.resultId must be a valid NanoID format"
         }
-        require(executionId != null) { "ExecutionStepResult.executionId must not be null" }
         require(stepIndex >= 0) { "ExecutionStepResult.stepIndex must be >= 0, got: $stepIndex" }
         require(stepId.isNotBlank()) { "ExecutionStepResult.stepId must not be blank" }
         require(stepType.isNotBlank()) { "ExecutionStepResult.stepType must not be blank" }
-        require(status != null) { "ExecutionStepResult.status must not be null" }
-        require(startedAt != null) { "ExecutionStepResult.startedAt must not be null" }
-        require(completedAt != null) { "ExecutionStepResult.completedAt must not be null" }
-        
+
         // Business rule: completedAt must be >= startedAt
-        if (completedAt.isBefore(startedAt)) {
-            throw IllegalArgumentException("ExecutionStepResult.completedAt must be >= startedAt")
-        }
+        require(!completedAt.isBefore(startedAt)) { "ExecutionStepResult.completedAt must be >= startedAt" }
         
         // Business rule: errorMessage and errorDetails required when FAILED
         if (status == StepStatus.FAILED) {
@@ -118,16 +118,8 @@ data class ExecutionStepResult(
         
         // Business rule: errorMessage and errorDetails must be null when not FAILED
         if (status != StepStatus.FAILED) {
-            if (errorMessage != null) {
-                throw IllegalArgumentException(
-                    "ExecutionStepResult.errorMessage must be null when status != FAILED"
-                )
-            }
-            if (errorDetails != null) {
-                throw IllegalArgumentException(
-                    "ExecutionStepResult.errorDetails must be null when status != FAILED"
-                )
-            }
+            require(errorMessage == null) { "ExecutionStepResult.errorMessage must be null when status != FAILED" }
+            require(errorDetails == null) { "ExecutionStepResult.errorDetails must be null when status != FAILED" }
         }
         
         // Business rule: outputData should be null when FAILED (partial outputs discarded)

@@ -1,5 +1,7 @@
 package io.maestro.model.execution
 
+import io.maestro.model.errors.MalformedWorkflowExecutionIDException
+import io.maestro.model.util.DEFAULT_SIZE
 import io.maestro.model.util.NanoID
 
 /**
@@ -14,12 +16,12 @@ import io.maestro.model.util.NanoID
  * API Format: 21-character URL-safe string
  * Example: "V1StGXR8_Z5jdHi6B-myT"
  */
-data class WorkflowExecutionID(val value: String) {
+@JvmInline
+value class WorkflowExecutionID(val value: String) {
     init {
-        require(value.isNotBlank()) { "WorkflowExecutionID value cannot be blank" }
-        require(NanoID.isValid(value, minSize = 1, maxSize = 100)) {
-            "WorkflowExecutionID value must be a valid NanoID format"
-        }
+        if (value.isBlank()) throw MalformedWorkflowExecutionIDException(value, "ID must not be blank")
+        if (!NanoID.isValid(value, minSize = 1, maxSize = 100)) throw MalformedWorkflowExecutionIDException(value, "Invalid NanoID format: $value (expected 21 characters, URL-safe)")
+
     }
     
     /**
@@ -37,13 +39,6 @@ data class WorkflowExecutionID(val value: String) {
          * @throws IllegalArgumentException if the string format is invalid
          */
         fun fromString(str: String): WorkflowExecutionID {
-            require(str.isNotBlank()) { 
-                "Invalid WorkflowExecutionID format: value cannot be blank" 
-            }
-            require(NanoID.isValid(str, minSize = 1, maxSize = 100)) { 
-                "Invalid WorkflowExecutionID format: must be a valid NanoID" 
-            }
-            
             return WorkflowExecutionID(str)
         }
         

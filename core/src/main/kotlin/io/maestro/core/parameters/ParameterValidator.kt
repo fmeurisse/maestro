@@ -1,8 +1,6 @@
 package io.maestro.core.parameters
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.core.parameters.ParameterValidationError
-import io.maestro.core.parameters.ParametersValidationResult
 import io.maestro.model.WorkflowRevisionID
 import io.maestro.model.errors.InvalidParameterValueException
 import io.maestro.model.parameters.ParameterDefinition

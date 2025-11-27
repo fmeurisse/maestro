@@ -229,7 +229,8 @@ class ExecutionResourceIntegTest : AbstractAPIContractTest() {
             .statusCode(404)
             .contentType("application/problem+json")
             .body("type", CoreMatchers.containsString("execution-not-found"))
-            .body("title", CoreMatchers.equalTo("Execution Not Found"))
+            .body("title", CoreMatchers.equalTo("Workflow Execution Not Found"))
+            .body("detail", CoreMatchers.equalTo("Workflow execution not found: $nonExistentExecutionId"))
             .body("status", CoreMatchers.equalTo(404))
     }
 
@@ -245,8 +246,9 @@ class ExecutionResourceIntegTest : AbstractAPIContractTest() {
         .then()
             .statusCode(400) // Should return 400 Bad Request for invalid format
             .contentType("application/problem+json")
-            .body("type", CoreMatchers.containsString("bad-request"))
-            .body("title", CoreMatchers.equalTo("Bad Request"))
+            .body("type", CoreMatchers.containsString("/problems/malformed-workflow-execution-id"))
+            .body("title", CoreMatchers.equalTo("Malformed WorkflowExecutionID"))
+            .body("detail", CoreMatchers.equalTo("Invalid NanoID format: invalid@id#format! (expected 21 characters, URL-safe)"))
             .body("status", CoreMatchers.equalTo(400))
     }
 
@@ -723,8 +725,8 @@ class ExecutionResourceIntegTest : AbstractAPIContractTest() {
                 step.containsKey("completedAt"),
                 "Step should have completedAt timestamp"
             )
-            val startedAt = step["startedAt"] as String
-            val completedAt = step["completedAt"] as String
+            val startedAt = step["startedAt"]
+            val completedAt = step["completedAt"]
             Assertions.assertNotNull(startedAt, "startedAt should not be null")
             Assertions.assertNotNull(completedAt, "completedAt should not be null")
         }

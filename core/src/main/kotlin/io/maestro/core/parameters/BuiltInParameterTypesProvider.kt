@@ -1,11 +1,6 @@
 package io.maestro.core.parameters
 
-import io.maestro.core.parameters.ParameterTypesProvider
-import io.maestro.model.parameters.BooleanParameterType
-import io.maestro.model.parameters.FloatParameterType
-import io.maestro.model.parameters.IntegerParameterType
-import io.maestro.model.parameters.ParameterType
-import io.maestro.model.parameters.StringParameterType
+import io.maestro.model.parameters.*
 
 /**
  * Default parameter types provider for built-in types.

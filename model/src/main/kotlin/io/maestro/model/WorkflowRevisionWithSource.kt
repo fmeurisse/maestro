@@ -20,11 +20,11 @@ import java.time.Instant
 data class WorkflowRevisionWithSource(
     val revision: WorkflowRevision,
     val yamlSource: String
-) {
+): IWorkflowRevisionID {
     // Convenience accessors that delegate to revision
-    val namespace: String get() = revision.namespace
-    val id: String get() = revision.id
-    val version: Int get() = revision.version
+    override val namespace: String get() = revision.namespace
+    override val id: String get() = revision.id
+    override val version: Int get() = revision.version
     val name: String get() = revision.name
     val description: String get() = revision.description
     val parameters: List<ParameterDefinition> get() = revision.parameters

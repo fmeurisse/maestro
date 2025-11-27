@@ -66,37 +66,20 @@ data class WorkflowExecution(
     val lastUpdatedAt: Instant
 ) {
     init {
-        require(executionId != null) { "WorkflowExecution.executionId must not be null" }
-        require(revisionId != null) { "WorkflowExecution.revisionId must not be null" }
-        require(inputParameters != null) { "WorkflowExecution.inputParameters must not be null" }
-        require(status != null) { "WorkflowExecution.status must not be null" }
-        require(startedAt != null) { "WorkflowExecution.startedAt must not be null" }
-        require(lastUpdatedAt != null) { "WorkflowExecution.lastUpdatedAt must not be null" }
-        
         // Business rule: errorMessage required when FAILED
-        if (status == ExecutionStatus.FAILED && errorMessage == null) {
-            throw IllegalArgumentException("WorkflowExecution.errorMessage must be set when status = FAILED")
-        }
+        require(!(status == ExecutionStatus.FAILED && errorMessage == null)) { "WorkflowExecution.errorMessage must be set when status = FAILED" }
         
         // Business rule: errorMessage must be null when not FAILED
-        if (status != ExecutionStatus.FAILED && errorMessage != null) {
-            throw IllegalArgumentException("WorkflowExecution.errorMessage must be null when status != FAILED")
-        }
+        require(!(status != ExecutionStatus.FAILED && errorMessage != null)) { "WorkflowExecution.errorMessage must be null when status != FAILED" }
         
         // Business rule: completedAt must be >= startedAt when set
-        if (completedAt != null && completedAt.isBefore(startedAt)) {
-            throw IllegalArgumentException("WorkflowExecution.completedAt must be >= startedAt")
-        }
+        require(!(completedAt != null && completedAt.isBefore(startedAt))) { "WorkflowExecution.completedAt must be >= startedAt" }
         
         // Business rule: completedAt must be set for terminal states
-        if (status.isTerminal() && completedAt == null) {
-            throw IllegalArgumentException("WorkflowExecution.completedAt must be set when status is terminal")
-        }
+        require(!(status.isTerminal() && completedAt == null)) { "WorkflowExecution.completedAt must be set when status is terminal" }
         
         // Business rule: completedAt must be null for non-terminal states
-        if (!status.isTerminal() && completedAt != null) {
-            throw IllegalArgumentException("WorkflowExecution.completedAt must be null when status is not terminal")
-        }
+        require(!(!status.isTerminal() && completedAt != null)) { "WorkflowExecution.completedAt must be null when status is not terminal" }
     }
     
     /**

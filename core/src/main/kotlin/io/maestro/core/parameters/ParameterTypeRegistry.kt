@@ -2,17 +2,12 @@ package io.maestro.core.parameters
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.module.SimpleModule
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.core.parameters.ParameterTypesProvider
 import io.maestro.model.parameters.ParameterType
 import jakarta.enterprise.context.ApplicationScoped
-import java.util.ServiceLoader
+import java.util.*
 
 /**
  * Registry for parameter types loaded via ServiceLoader.
@@ -144,11 +139,12 @@ class ParameterTypeSerializer : JsonSerializer<ParameterType>() {
  * }
  * ```
  */
-fun ObjectMapper.registerParameterTypes(registry: ParameterTypeRegistry) {
+fun ObjectMapper.registerParameterTypes(registry: ParameterTypeRegistry): ObjectMapper {
     val module = SimpleModule().apply {
         addSerializer(ParameterType::class.java, ParameterTypeSerializer())
         addDeserializer(ParameterType::class.java, ParameterTypeDeserializer(registry))
     }
     registerModule(module)
+    return this
 }
 

@@ -22,7 +22,7 @@ import io.maestro.model.execution.StepStatus
     include = JsonTypeInfo.As.PROPERTY,
     property = "type"
 )
-interface Step {
+fun interface Step {
     /**
      * Execute this step with the given execution context.
      * 

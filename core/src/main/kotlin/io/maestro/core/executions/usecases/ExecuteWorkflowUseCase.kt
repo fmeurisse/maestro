@@ -47,7 +47,7 @@ class ExecuteWorkflowUseCase @Inject constructor(
                 "Workflow revision not found: ${revisionId.namespace}/${revisionId.id}/v${revisionId.version}"
             )
 
-        // Step 2: Generate execution ID (UUID v7 for time-ordered sortability)
+        // Step 2: Generate execution ID
         val executionId = WorkflowExecutionID.generate()
 
         // Step 3: Create execution record with RUNNING status

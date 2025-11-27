@@ -1,56 +1,55 @@
-package io.maestro.api.execution.dto
+package io.maestro.model.execution
 
 import com.fasterxml.jackson.annotation.JsonFormat
 import com.fasterxml.jackson.annotation.JsonProperty
-import io.maestro.model.execution.WorkflowExecution
 import java.time.Instant
 
 /**
- * Summary DTO for execution history list items.
+ * Summary for execution history list items.
  *
  * Contains essential execution information for display in history lists,
  * including execution ID, status, version, timing, and step statistics.
  */
-data class ExecutionSummaryDTO(
-    @JsonProperty("executionId")
+data class ExecutionSummary(
+    @param:JsonProperty("executionId")
     val executionId: String,
 
-    @JsonProperty("status")
+    @param:JsonProperty("status")
     val status: String,
 
-    @JsonProperty("errorMessage")
+    @param:JsonProperty("errorMessage")
     val errorMessage: String?,
 
-    @JsonProperty("revisionVersion")
+    @param:JsonProperty("revisionVersion")
     val revisionVersion: Int,
 
-    @JsonProperty("startedAt")
-    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @param:JsonProperty("startedAt")
+    @param:JsonFormat(shape = JsonFormat.Shape.STRING)
     val startedAt: Instant,
 
-    @JsonProperty("completedAt")
-    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @param:JsonProperty("completedAt")
+    @param:JsonFormat(shape = JsonFormat.Shape.STRING)
     val completedAt: Instant?,
 
-    @JsonProperty("stepCount")
+    @param:JsonProperty("stepCount")
     val stepCount: Int,
 
-    @JsonProperty("completedSteps")
+    @param:JsonProperty("completedSteps")
     val completedSteps: Int,
 
-    @JsonProperty("failedSteps")
+    @param:JsonProperty("failedSteps")
     val failedSteps: Int
 ) {
     companion object {
         fun fromDomain(
             execution: WorkflowExecution,
-            stepResults: List<io.maestro.model.execution.ExecutionStepResult>
-        ): ExecutionSummaryDTO {
+            stepResults: List<ExecutionStepResult>
+        ): ExecutionSummary {
             val stepCount = stepResults.size
-            val completedSteps = stepResults.count { it.status == io.maestro.model.execution.StepStatus.COMPLETED }
-            val failedSteps = stepResults.count { it.status == io.maestro.model.execution.StepStatus.FAILED }
+            val completedSteps = stepResults.count { it.status == StepStatus.COMPLETED }
+            val failedSteps = stepResults.count { it.status == StepStatus.FAILED }
 
-            return ExecutionSummaryDTO(
+            return ExecutionSummary(
                 executionId = execution.executionId.toString(),
                 status = execution.status.name,
                 errorMessage = execution.errorMessage,

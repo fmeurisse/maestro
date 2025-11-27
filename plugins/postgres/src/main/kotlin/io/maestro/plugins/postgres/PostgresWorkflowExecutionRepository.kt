@@ -59,9 +59,7 @@ class PostgresWorkflowExecutionRepository @Inject constructor(
                 .mapTo(Int::class.java)
                 .one()
 
-            if (exists > 0) {
-                throw IllegalArgumentException("Execution already exists: ${execution.executionId}")
-            }
+            require(exists <= 0) { "Execution already exists: ${execution.executionId}" }
 
             // Serialize input parameters to JSONB
             val inputParamsJson = jsonMapper.writeValueAsString(execution.inputParameters)
@@ -111,11 +109,7 @@ class PostgresWorkflowExecutionRepository @Inject constructor(
                 .mapTo(Int::class.java)
                 .one()
 
-            if (exists > 0) {
-                throw IllegalArgumentException(
-                    "Step result already exists for execution ${stepResult.executionId}, step ${stepResult.stepIndex}"
-                )
-            }
+            require(exists <= 0) { "Step result already exists for execution ${stepResult.executionId}, step ${stepResult.stepIndex}" }
 
             // Serialize JSONB fields
             val inputDataJson = stepResult.inputData?.let { jsonMapper.writeValueAsString(it) }

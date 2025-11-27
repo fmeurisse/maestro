@@ -25,7 +25,7 @@ class CreateWorkflowAPIContractTest : AbstractAPIContractTest() {
 
 
     companion object {
-        private const val WORKFLOW_ENDPOINT = "/api/workflows"
+        private const val WORKFLOW_ENDPOINT = WORKFLOWS_PATH
 
         private val INVALID_YAML = """
             namespace: test-ns

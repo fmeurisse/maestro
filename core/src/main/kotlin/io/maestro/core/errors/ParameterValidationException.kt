@@ -1,4 +1,4 @@
-package io.maestro.api.execution.errors
+package io.maestro.core.errors
 
 import io.maestro.core.parameters.ParametersValidationResult
 import io.maestro.model.WorkflowRevisionID

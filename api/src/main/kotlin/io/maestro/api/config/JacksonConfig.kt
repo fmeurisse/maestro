@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.maestro.core.parameters.ParameterTypeRegistry
+import io.maestro.core.parameters.registerParameterTypes
 import io.maestro.core.workflows.steps.StepTypeRegistry
 import io.maestro.core.workflows.steps.registerStepTypes
 import io.quarkus.jackson.ObjectMapperCustomizer
@@ -40,16 +42,16 @@ class JacksonConfig {
      * rather than producing a competing bean.
      */
     @Singleton
-    fun jsonObjectMapperCustomizer(): ObjectMapperCustomizer {
+    fun jsonObjectMapperCustomizer(registry: ParameterTypeRegistry): ObjectMapperCustomizer {
         return ObjectMapperCustomizer { mapper ->
             // Register Kotlin and JSR310 modules
             mapper.registerModule(kotlinModule())
-            mapper.registerModule(JavaTimeModule())
-            // Serialize Instant as ISO-8601 strings instead of numeric timestamps
-            // This ensures PostgreSQL can parse them correctly in the trigger function
-            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-
-            mapper.registerStepTypes()
+                .registerModule(JavaTimeModule())
+                // Serialize Instant as ISO-8601 strings instead of numeric timestamps
+                // This ensures PostgreSQL can parse them correctly in the trigger function
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .registerStepTypes()
+                .registerParameterTypes(registry)
 
             log.info { "Jackson ObjectMapper (JSON) configured with ${StepTypeRegistry.getAllTypeNames().size} step types" }
         }

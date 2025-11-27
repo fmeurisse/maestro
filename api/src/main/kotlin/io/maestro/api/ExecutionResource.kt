@@ -1,21 +1,26 @@
-package io.maestro.api.execution
+package io.maestro.api
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.maestro.api.execution.dto.ExecutionDetailResponseDTO
-import io.maestro.api.execution.dto.ExecutionRequestDTO
-import io.maestro.api.execution.dto.ExecutionResponseDTO
-import io.maestro.api.execution.errors.ExecutionNotFoundException
-import io.maestro.api.execution.errors.ParameterValidationException
-import io.maestro.api.execution.errors.WorkflowNotFoundException
-import io.maestro.core.workflows.IWorkflowRevisionRepository
+import io.maestro.model.execution.ExecutionResponse
+import io.maestro.core.errors.ParameterValidationException
+import io.maestro.core.errors.ExecutionNotFoundException
+import io.maestro.core.errors.WorkflowNotFoundException
 import io.maestro.core.executions.IWorkflowExecutionRepository
 import io.maestro.core.executions.usecases.ExecuteWorkflowUseCase
 import io.maestro.core.executions.usecases.GetExecutionStatusUseCase
 import io.maestro.core.parameters.ParameterValidator
+import io.maestro.core.workflows.IWorkflowRevisionRepository
 import io.maestro.model.WorkflowRevisionID
+import io.maestro.model.execution.ExecutionDetailResponse
+import io.maestro.model.execution.ExecutionRequest
 import io.maestro.model.execution.WorkflowExecutionID
 import jakarta.inject.Inject
-import jakarta.ws.rs.*
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.eclipse.microprofile.openapi.annotations.Operation
@@ -65,7 +70,7 @@ class ExecutionResource @Inject constructor(
      * @return 200 OK with execution ID and status, or error response
      */
     @POST
-    @Path("/api/executions")
+    @Path(EXECUTIONS_PATH)
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @Operation(
@@ -77,7 +82,10 @@ class ExecutionResource @Inject constructor(
             APIResponse(
                 responseCode = "200",
                 description = "Execution started successfully",
-                content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExecutionResponseDTO::class))]
+                content = [Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ExecutionResponse::class)
+                )]
             ),
             APIResponse(
                 responseCode = "400",
@@ -92,7 +100,7 @@ class ExecutionResource @Inject constructor(
         ]
     )
     fun executeWorkflow(
-        request: ExecutionRequestDTO
+        request: ExecutionRequest
     ): Response {
         logger.info { "Received execution request for workflow: ${request.namespace}/${request.id}/v${request.version}" }
 
@@ -117,7 +125,7 @@ class ExecutionResource @Inject constructor(
             }
 
             // Execute workflow via use case with validated parameters
-            val executionId = executeWorkflowUseCase.execute(
+            val executionId: WorkflowExecutionID = executeWorkflowUseCase.execute(
                 revisionId = revisionId,
                 inputParameters = validationResult.validatedParameters
             )
@@ -130,8 +138,8 @@ class ExecutionResource @Inject constructor(
 
             // Return 200 OK with execution details
             return Response.ok()
-                .location(URI.create("/api/executions/$executionId"))
-                .entity(ExecutionResponseDTO.fromDomain(execution))
+                .location(URI.create(getExecutionIdPath(executionId.value)))
+                .entity(ExecutionResponse.fromDomain(execution))
                 .build()
 
         } catch (e: WorkflowNotFoundException) {
@@ -159,7 +167,7 @@ class ExecutionResource @Inject constructor(
      * @return 200 OK with execution details, or 404 if not found
      */
     @GET
-    @Path("/api/executions/{executionId}")
+    @Path(EXECUTION_ID_PATH)
     @Operation(
         summary = "Get execution status",
         description = "Retrieves detailed status and step-by-step results for a workflow execution."
@@ -169,7 +177,10 @@ class ExecutionResource @Inject constructor(
             APIResponse(
                 responseCode = "200",
                 description = "Execution details retrieved successfully",
-                content = [Content(mediaType = MediaType.APPLICATION_JSON, schema = Schema(implementation = ExecutionDetailResponseDTO::class))]
+                content = [Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = Schema(implementation = ExecutionDetailResponse::class)
+                )]
             ),
             APIResponse(
                 responseCode = "404",
@@ -184,7 +195,7 @@ class ExecutionResource @Inject constructor(
         ]
     )
     fun getExecutionStatus(
-        @PathParam("executionId")
+        @Suppress("UnresolvedRestParam") @PathParam("executionId")
         @Parameter(description = "Execution ID (NanoID format)", required = true)
         executionIdString: String
     ): Response {
@@ -205,7 +216,7 @@ class ExecutionResource @Inject constructor(
 
             // Return 200 OK with detailed execution info
             return Response.ok()
-                .entity(ExecutionDetailResponseDTO.fromDomain(execution, stepResults))
+                .entity(ExecutionDetailResponse.fromDomain(execution, stepResults))
                 .build()
 
         } catch (e: ExecutionNotFoundException) {

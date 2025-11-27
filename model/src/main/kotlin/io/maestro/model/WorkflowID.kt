@@ -1,6 +1,5 @@
 package io.maestro.model
 
-import io.maestro.model.WorkflowID.Companion.parse
 import io.maestro.model.errors.MalformedWorkflowIDException
 
 /**

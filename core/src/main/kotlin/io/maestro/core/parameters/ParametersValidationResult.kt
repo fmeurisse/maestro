@@ -1,7 +1,5 @@
 package io.maestro.core.parameters
 
-import io.maestro.core.parameters.ParameterValidationError
-
 /**
  * Result of parameter validation.
  *

@@ -73,8 +73,9 @@ object StepTypeRegistry {
 
 }
 
-fun ObjectMapper.registerStepTypes() {
+fun ObjectMapper.registerStepTypes(): ObjectMapper {
     StepTypeRegistry.getAllTypes().forEach { (type, kClass) ->
         registerSubtypes(NamedType(kClass.java, type))
     }
+    return this
 }

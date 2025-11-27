@@ -22,7 +22,7 @@ import io.maestro.model.parameters.ParameterType
  * }
  * ```
  */
-interface ParameterTypesProvider {
+fun interface ParameterTypesProvider {
     /**
      * Provide a list of parameter types to register.
      *

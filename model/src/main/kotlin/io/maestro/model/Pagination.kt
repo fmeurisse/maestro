@@ -1,14 +1,14 @@
-package io.maestro.api.execution.dto
+package io.maestro.model
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
- * Pagination metadata DTO.
+ * Pagination metadata.
  *
  * Provides information about pagination state for list responses,
  * including total count, current page size, offset, and whether more results are available.
  */
-data class PaginationDTO(
+data class Pagination(
     @JsonProperty("total")
     val total: Long,
 
@@ -26,8 +26,8 @@ data class PaginationDTO(
             total: Long,
             limit: Int,
             offset: Int
-        ): PaginationDTO {
-            return PaginationDTO(
+        ): Pagination {
+            return Pagination(
                 total = total,
                 limit = limit,
                 offset = offset,

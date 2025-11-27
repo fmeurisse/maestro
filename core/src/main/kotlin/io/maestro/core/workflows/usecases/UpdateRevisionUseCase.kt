@@ -97,7 +97,7 @@ class UpdateRevisionUseCase constructor(
         val existingUpdatedAt = existing.updatedAt
             ?: throw IllegalStateException("Existing revision has null updatedAt - database integrity issue")
 
-        if (!existingUpdatedAt.equals(yamlUpdatedAt)) {
+        if (existingUpdatedAt.toEpochMilli() != yamlUpdatedAt.toEpochMilli()) {
             logger.warn {
                 "Optimistic lock conflict detected for $revisionId. " +
                 "YAML updatedAt: $yamlUpdatedAt, database updatedAt: $existingUpdatedAt"
