@@ -8,10 +8,11 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.maestro.core.WorkflowJsonParser
-import io.maestro.core.WorkflowYamlMetadataUpdater
+import io.maestro.core.workflows.WorkflowJsonParser
+import io.maestro.core.workflows.WorkflowYamlMetadataUpdater
 import io.kotest.matchers.string.shouldContain as stringShouldContain
-import io.maestro.core.steps.LogTask
+import io.maestro.core.parameters.ParameterTypeRegistry
+import io.maestro.core.workflows.steps.LogTask
 import io.maestro.core.errors.ActiveRevisionConflictException
 import io.maestro.core.errors.WorkflowAlreadyExistsException
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
@@ -64,7 +65,8 @@ class PostgresWorkflowRevisionRepositoryIntegTest : FeatureSpec({
         )
 
         // Configure Json parser for JSONB serialization
-        jsonParser = WorkflowJsonParser()
+        val parameterTypeRegistry = ParameterTypeRegistry()
+        jsonParser = WorkflowJsonParser(parameterTypeRegistry)
 
         // Run Liquibase migrations using CommandScope API
         val connection = DriverManager.getConnection(
