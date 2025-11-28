@@ -1,6 +1,7 @@
 package io.maestro.model
 
 import io.maestro.model.errors.InvalidWorkflowRevisionException
+import io.maestro.model.parameters.ParameterDefinition
 import io.maestro.model.steps.Step
 import java.time.Instant
 
@@ -19,13 +20,14 @@ import java.time.Instant
 data class WorkflowRevisionWithSource(
     val revision: WorkflowRevision,
     val yamlSource: String
-) {
+): IWorkflowRevisionID {
     // Convenience accessors that delegate to revision
-    val namespace: String get() = revision.namespace
-    val id: String get() = revision.id
-    val version: Int get() = revision.version
+    override val namespace: String get() = revision.namespace
+    override val id: String get() = revision.id
+    override val version: Int get() = revision.version
     val name: String get() = revision.name
     val description: String get() = revision.description
+    val parameters: List<ParameterDefinition> get() = revision.parameters
     val steps: List<Step> get() = revision.steps
     val active: Boolean get() = revision.active
     val createdAt: Instant? get() = revision.createdAt
@@ -49,6 +51,7 @@ data class WorkflowRevisionWithSource(
             name: String,
             description: String,
             yamlSource: String,
+            parameters: List<ParameterDefinition> = emptyList(),
             steps: List<Step>,
             active: Boolean = false,
             createdAt: Instant = Instant.now(),
@@ -59,7 +62,7 @@ data class WorkflowRevisionWithSource(
             }
             val revision = WorkflowRevision.validateAndCreate(
                 namespace, id, version, name, description,
-                steps, active, createdAt, updatedAt
+                parameters, steps, active, createdAt, updatedAt
             )
             return WorkflowRevisionWithSource(revision, yamlSource)
         }

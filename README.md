@@ -103,10 +103,18 @@ Test naming convention:
 
 ## Documentation
 
-- Developer Guide: `documentation/DEVELOPER_GUIDE.md`
-- API User Guide: `documentation/API_USER_GUIDE.md`
+### User Documentation
+- **API User Guide**: `documentation/API_USER_GUIDE.md` - Complete REST API reference for workflow management and execution
+
+### Developer Documentation
+- **Developer Guide**: `documentation/DEVELOPER_GUIDE.md` - Setup, build, test, and contribution guidelines
+- **Architecture**: `documentation/ARCHITECTURE.md` - System design, execution flow, and design patterns
+- **Data Model**: `documentation/DATA_MODEL.md` - Domain entities, value objects, and database schema
+- **Error Handling**: `documentation/ERROR_HANDLING.md` - Exception hierarchy and RFC 7807 Problem Details
+
+### Engineering Notes
 - Engineering notes for AI agents: `CLAUDE.md` and `AGENTS.md`
-- Specs and contracts: `specs/001-workflow-management`
+- Feature specifications: `specs/001-workflow-management`, `specs/002-workflow-execution`
 
 Please start with the Developer Guide for setup and contributor workflow, then the API User Guide for endpoint usage.
 
@@ -132,4 +140,4 @@ Licensed under the Apache License, Version 2.0.
 
 
 
-Last updated: 2025-11-25
+Last updated: 2025-11-27

@@ -1,6 +1,6 @@
 package io.maestro.core.errors
 
-import io.maestro.model.WorkflowID
+import io.maestro.model.IWorkflowID
 import io.maestro.model.errors.MaestroException
 
 /**
@@ -9,11 +9,11 @@ import io.maestro.model.errors.MaestroException
  *
  * This exception conforms to RFC 7807 Problem Details format.
  */
-class WorkflowNotFoundException(workflowId: WorkflowID) : MaestroException(
+class WorkflowNotFoundException(workflowId: IWorkflowID) : MaestroException(
     type = "/problems/workflow-not-found",
     title = "Workflow Not Found",
     status = 404,
-    message = "Workflow not found: $workflowId",
+    message = "Workflow not found: ${workflowId.namespace}::${workflowId.id}",
     instance = null,
     cause = null
 )

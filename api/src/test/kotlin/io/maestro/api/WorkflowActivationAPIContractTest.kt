@@ -21,18 +21,7 @@ import org.junit.jupiter.api.Test
  * - Error cases (404 Not Found, etc.)
  */
 @QuarkusTest
-class WorkflowActivationAPIContractTest {
-
-    @Inject
-    lateinit var jdbi: Jdbi
-
-    @BeforeEach
-    fun cleanupDatabase() {
-        // Delete all workflow revisions before each test to ensure test isolation
-        jdbi.useHandle<Exception> { handle ->
-            handle.execute("DELETE FROM workflow_revisions")
-        }
-    }
+class WorkflowActivationAPIContractTest  : AbstractAPIContractTest() {
 
     companion object {
         private const val WORKFLOW_ENDPOINT = "/api/workflows"

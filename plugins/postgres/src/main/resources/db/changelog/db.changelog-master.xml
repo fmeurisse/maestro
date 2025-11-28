@@ -7,5 +7,6 @@
 
     <!-- Include all changelog files -->
     <include file="db/changelog/changes/V001__create_workflow_revisions.sql"/>
+    <include file="db/changelog/changes/V002__create_workflow_execution_tables.sql"/>
 
 </databaseChangeLog>

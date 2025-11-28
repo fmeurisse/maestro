@@ -4,10 +4,7 @@ import io.quarkus.test.junit.QuarkusTest
 import io.restassured.RestAssured
 import io.restassured.config.EncoderConfig
 import io.restassured.http.ContentType
-import jakarta.inject.Inject
 import org.hamcrest.CoreMatchers
-import org.jdbi.v3.core.Jdbi
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 /**
@@ -24,21 +21,11 @@ import org.junit.jupiter.api.Test
  * - Content-Type headers (request and response)
  */
 @QuarkusTest
-class CreateWorkflowAPIContractTest {
+class CreateWorkflowAPIContractTest : AbstractAPIContractTest() {
 
-    @Inject
-    lateinit var jdbi: Jdbi
-
-    @BeforeEach
-    fun cleanupDatabase() {
-        // Delete all workflow revisions before each test to ensure test isolation
-        jdbi.useHandle<Exception> { handle ->
-            handle.execute("DELETE FROM workflow_revisions")
-        }
-    }
 
     companion object {
-        private const val WORKFLOW_ENDPOINT = "/api/workflows"
+        private const val WORKFLOW_ENDPOINT = WORKFLOWS_PATH
 
         private val INVALID_YAML = """
             namespace: test-ns

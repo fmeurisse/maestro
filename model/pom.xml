@@ -46,6 +46,11 @@
             <artifactId>kotlin-logging-jvm</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.eclipse.microprofile.openapi</groupId>
+            <artifactId>microprofile-openapi-api</artifactId>
+        </dependency>
+
         <!-- JUnit 5 for existing tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -103,6 +108,10 @@
                         <kotest.framework.classpath.scanning.autoscan.disable>true</kotest.framework.classpath.scanning.autoscan.disable>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

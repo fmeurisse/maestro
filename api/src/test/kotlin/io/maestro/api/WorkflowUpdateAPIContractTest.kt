@@ -25,27 +25,7 @@ import java.time.Instant
  * - Sequential updates with proper timestamp tracking
  */
 @QuarkusTest
-class WorkflowUpdateAPIContractTest {
-
-    @Inject
-    lateinit var jdbi: Jdbi
-
-    @BeforeEach
-    fun cleanupDatabase() {
-        // Truncate all workflow revisions before each test to ensure test isolation
-        // TRUNCATE is faster than DELETE and resets the table completely
-        jdbi.useHandle<Exception> { handle ->
-            handle.execute("TRUNCATE TABLE workflow_revisions RESTART IDENTITY CASCADE")
-        }
-    }
-    
-    @AfterEach
-    fun cleanupAfterTest() {
-        // Also cleanup after each test to ensure no data leaks between tests
-        jdbi.useHandle<Exception> { handle ->
-            handle.execute("TRUNCATE TABLE workflow_revisions RESTART IDENTITY CASCADE")
-        }
-    }
+class WorkflowUpdateAPIContractTest  : AbstractAPIContractTest() {
 
     companion object {
         private const val WORKFLOW_ENDPOINT = "/api/workflows"

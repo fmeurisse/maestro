@@ -111,6 +111,8 @@ The workflow system uses a hierarchical task model:
 ## Active Technologies
 - Kotlin 2.2.0+ on Java 21 JVM + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (YAML/JSON parsing), JDBI or Exposed (database access), RFC 7807 JSON Problem library (001-workflow-management)
 - PostgreSQL 18 with JSONB for parsed workflow steps and TEXT for original YAML (001-workflow-management)
+- Kotlin 2.2.0+ on Java 21 JVM (consistent with 001-workflow-management) + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (JSON parsing), JDBI 3.x (database access), Zalando Problem (RFC 7807) (002-workflow-execution)
+- PostgreSQL 18 with execution state tables (workflow_executions, execution_step_results) using JSONB for step outputs and error details (002-workflow-execution)
 
 ## Recent Changes
 - 001-workflow-management: Added Kotlin 2.2.0+ on Java 21 JVM + Quarkus 3.29.3+ (REST, CDI, Kotlin support), Jackson (YAML/JSON parsing), JDBI or Exposed (database access), RFC 7807 JSON Problem library

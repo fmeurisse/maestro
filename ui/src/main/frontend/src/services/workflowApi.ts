@@ -1,6 +1,24 @@
 import type { WorkflowRevisionID, WorkflowListItem } from '../types/workflow'
+import type {
+  ExecutionRequest,
+  ExecutionResponse,
+  ExecutionDetail,
+  ExecutionHistoryResponse,
+  ExecutionStatus,
+} from '../types/execution'
+import { getApiBaseUrl } from '../config/runtime'
 
-const API_BASE = '/api/workflows'
+// Get the API base URL from runtime configuration
+// This allows the API URL to be configured at deployment time via environment variables
+const getApiBase = () => {
+  const baseUrl = getApiBaseUrl()
+  return baseUrl ? `${baseUrl}/api/workflows` : '/api/workflows'
+}
+
+const getExecutionApiBase = () => {
+  const baseUrl = getApiBaseUrl()
+  return baseUrl ? `${baseUrl}/api/executions` : '/api/executions'
+}
 
 /**
  * Workflow Management API Client
@@ -11,7 +29,7 @@ export class WorkflowApi {
    * Creates a new workflow with version 1
    */
   async createWorkflow(yaml: string): Promise<WorkflowRevisionID> {
-    const response = await fetch(API_BASE, {
+    const response = await fetch(getApiBase(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/yaml',
@@ -35,7 +53,7 @@ export class WorkflowApi {
     id: string,
     yaml: string
   ): Promise<WorkflowRevisionID> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/yaml',
@@ -60,8 +78,8 @@ export class WorkflowApi {
     activeOnly = false
   ): Promise<WorkflowListItem[]> {
     const url = activeOnly
-      ? `${API_BASE}/${namespace}/${id}?active=true`
-      : `${API_BASE}/${namespace}/${id}`
+      ? `${getApiBase()}/${namespace}/${id}?active=true`
+      : `${getApiBase()}/${namespace}/${id}`
 
     const response = await fetch(url, {
       headers: {
@@ -89,7 +107,7 @@ export class WorkflowApi {
     id: string,
     version: number
   ): Promise<string> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}/${version}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}/${version}`, {
       headers: {
         Accept: 'application/yaml',
       },
@@ -111,7 +129,7 @@ export class WorkflowApi {
     version: number
   ): Promise<WorkflowRevisionID> {
     const response = await fetch(
-      `${API_BASE}/${namespace}/${id}/${version}/activate`,
+      `${getApiBase()}/${namespace}/${id}/${version}/activate`,
       {
         method: 'POST',
         headers: {
@@ -137,7 +155,7 @@ export class WorkflowApi {
     version: number
   ): Promise<WorkflowRevisionID> {
     const response = await fetch(
-      `${API_BASE}/${namespace}/${id}/${version}/deactivate`,
+      `${getApiBase()}/${namespace}/${id}/${version}/deactivate`,
       {
         method: 'POST',
         headers: {
@@ -163,7 +181,7 @@ export class WorkflowApi {
     version: number,
     yaml: string
   ): Promise<WorkflowRevisionID> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}/${version}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}/${version}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/yaml',
@@ -188,7 +206,7 @@ export class WorkflowApi {
     id: string,
     version: number
   ): Promise<void> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}/${version}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}/${version}`, {
       method: 'DELETE',
     })
 
@@ -201,13 +219,104 @@ export class WorkflowApi {
    * Deletes all revisions of a workflow
    */
   async deleteWorkflow(namespace: string, id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}`, {
       method: 'DELETE',
     })
 
     if (!response.ok) {
       throw new Error(`Failed to delete workflow: ${response.statusText}`)
     }
+  }
+
+  /**
+   * Lists all workflows in a namespace
+   */
+  async listWorkflows(namespace: string): Promise<Array<{ namespace: string; id: string }>> {
+    const response = await fetch(`${getApiBase()}/${namespace}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to list workflows: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  /**
+   * Launches a workflow execution
+   */
+  async executeWorkflow(request: ExecutionRequest): Promise<ExecutionResponse> {
+    const response = await fetch(getExecutionApiBase(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to execute workflow: ${response.statusText} - ${errorText}`)
+    }
+
+    return await response.json()
+  }
+
+  /**
+   * Gets execution details
+   */
+  async getExecution(executionId: string): Promise<ExecutionDetail> {
+    const response = await fetch(`${getExecutionApiBase()}/${executionId}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get execution: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  /**
+   * Gets execution history for a specific workflow
+   */
+  async getExecutionHistory(
+    namespace: string,
+    id: string,
+    filters?: {
+      version?: number
+      status?: ExecutionStatus
+      limit?: number
+      offset?: number
+    }
+  ): Promise<ExecutionHistoryResponse> {
+    const params = new URLSearchParams()
+    if (filters?.version !== undefined) params.append('version', filters.version.toString())
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.limit !== undefined) params.append('limit', filters.limit.toString())
+    if (filters?.offset !== undefined) params.append('offset', filters.offset.toString())
+
+    const queryString = params.toString()
+    const url = queryString
+      ? `${getApiBase()}/${namespace}/${id}/executions?${queryString}`
+      : `${getApiBase()}/${namespace}/${id}/executions`
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get execution history: ${response.statusText}`)
+    }
+
+    return await response.json()
   }
 
   /**

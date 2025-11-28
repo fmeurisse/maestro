@@ -7,12 +7,18 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.throwable.shouldHaveMessage
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.errors.InvalidWorkflowRevisionException
+import io.maestro.model.execution.ExecutionContext
+import io.maestro.model.execution.StepStatus
 import io.maestro.model.steps.Step
 import java.time.Instant
 
 class WorkflowRevisionUnitTest : FeatureSpec({
 
-    val mockSteps = listOf<Step>(object : Step {})
+    val mockSteps = listOf<Step>(object : Step {
+        override fun execute(context: ExecutionContext): Pair<StepStatus, ExecutionContext> {
+            return Pair(StepStatus.COMPLETED, context)
+        }
+    })
     val now = Instant.now()
 
     feature("create method") {

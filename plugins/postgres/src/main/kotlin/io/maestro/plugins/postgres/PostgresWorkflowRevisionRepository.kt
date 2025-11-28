@@ -1,11 +1,11 @@
 package io.maestro.plugins.postgres
 
-import io.maestro.core.WorkflowJsonParser
-import io.maestro.core.WorkflowYamlMetadataUpdater
+import io.maestro.core.workflows.WorkflowJsonParser
+import io.maestro.core.workflows.WorkflowYamlMetadataUpdater
 import io.maestro.core.errors.ActiveRevisionConflictException
 import io.maestro.core.errors.WorkflowAlreadyExistsException
 import io.maestro.core.errors.WorkflowRevisionNotFoundException
-import io.maestro.core.IWorkflowRevisionRepository
+import io.maestro.core.workflows.IWorkflowRevisionRepository
 import io.maestro.model.WorkflowID
 import io.maestro.model.WorkflowRevision
 import io.maestro.model.WorkflowRevisionID

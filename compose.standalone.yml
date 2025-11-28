@@ -1,0 +1,41 @@
+# Docker Compose configuration for Maestro standalone deployment
+# This deploys the all-in-one standalone module (API + UI bundled together)
+#
+# Usage:
+#   docker compose -f compose.standalone.yml up -d
+#   docker compose -f compose.standalone.yml down
+
+include:
+  - compose.base.yml
+
+services:
+  maestro-standalone:
+    image: io.maestro/standalone:latest
+    container_name: maestro-standalone
+    environment:
+      # Database Configuration
+      DB_USERNAME: maestro
+      DB_PASSWORD: maestro
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/maestro
+
+      # Application Configuration
+      QUARKUS_HTTP_PORT: 8081
+      QUARKUS_LOG_LEVEL: INFO
+
+      # Liquibase Configuration
+      QUARKUS_LIQUIBASE_MIGRATE_AT_START: "true"
+      QUARKUS_LIQUIBASE_CLEAN_AT_START: "false"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - maestro-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/q/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
