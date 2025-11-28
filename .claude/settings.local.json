@@ -28,7 +28,13 @@
       "Bash(if [ -d \"/Users/fmeurisse/Projects/Perso/maestro/specs/002-workflow-execution/checklists\" ])",
       "Bash(then echo \"EXISTS\")",
       "Bash(else echo \"NONE\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(xargs -I {} bash -c 'echo \"\"\"\"=== {} ===\"\"\"\" && head -30 \"\"\"\"{}\"\"\"\"')",
+      "Bash(mvn clean package:*)",
+      "Bash(mvn dependency:tree:*)",
+      "Bash(mvn help:evaluate:*)",
+      "WebSearch",
+      "Bash(mvn help:effective-pom:*)"
     ],
     "deny": [],
     "ask": []
