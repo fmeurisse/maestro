@@ -9,16 +9,16 @@ import com.fasterxml.jackson.annotation.JsonProperty
  * including total count, current page size, offset, and whether more results are available.
  */
 data class Pagination(
-    @JsonProperty("total")
+    @param:JsonProperty("total")
     val total: Long,
 
-    @JsonProperty("limit")
+    @param:JsonProperty("limit")
     val limit: Int,
 
-    @JsonProperty("offset")
+    @param:JsonProperty("offset")
     val offset: Int,
 
-    @JsonProperty("hasMore")
+    @param:JsonProperty("hasMore")
     val hasMore: Boolean
 ) {
     companion object {
