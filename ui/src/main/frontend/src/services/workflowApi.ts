@@ -6,9 +6,19 @@ import type {
   ExecutionHistoryResponse,
   ExecutionStatus,
 } from '../types/execution'
+import { getApiBaseUrl } from '../config/runtime'
 
-const API_BASE = '/api/workflows'
-const EXECUTION_API_BASE = '/api/executions'
+// Get the API base URL from runtime configuration
+// This allows the API URL to be configured at deployment time via environment variables
+const getApiBase = () => {
+  const baseUrl = getApiBaseUrl()
+  return baseUrl ? `${baseUrl}/api/workflows` : '/api/workflows'
+}
+
+const getExecutionApiBase = () => {
+  const baseUrl = getApiBaseUrl()
+  return baseUrl ? `${baseUrl}/api/executions` : '/api/executions'
+}
 
 /**
  * Workflow Management API Client
@@ -19,7 +29,7 @@ export class WorkflowApi {
    * Creates a new workflow with version 1
    */
   async createWorkflow(yaml: string): Promise<WorkflowRevisionID> {
-    const response = await fetch(API_BASE, {
+    const response = await fetch(getApiBase(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/yaml',
@@ -43,7 +53,7 @@ export class WorkflowApi {
     id: string,
     yaml: string
   ): Promise<WorkflowRevisionID> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/yaml',
@@ -68,8 +78,8 @@ export class WorkflowApi {
     activeOnly = false
   ): Promise<WorkflowListItem[]> {
     const url = activeOnly
-      ? `${API_BASE}/${namespace}/${id}?active=true`
-      : `${API_BASE}/${namespace}/${id}`
+      ? `${getApiBase()}/${namespace}/${id}?active=true`
+      : `${getApiBase()}/${namespace}/${id}`
 
     const response = await fetch(url, {
       headers: {
@@ -97,7 +107,7 @@ export class WorkflowApi {
     id: string,
     version: number
   ): Promise<string> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}/${version}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}/${version}`, {
       headers: {
         Accept: 'application/yaml',
       },
@@ -119,7 +129,7 @@ export class WorkflowApi {
     version: number
   ): Promise<WorkflowRevisionID> {
     const response = await fetch(
-      `${API_BASE}/${namespace}/${id}/${version}/activate`,
+      `${getApiBase()}/${namespace}/${id}/${version}/activate`,
       {
         method: 'POST',
         headers: {
@@ -145,7 +155,7 @@ export class WorkflowApi {
     version: number
   ): Promise<WorkflowRevisionID> {
     const response = await fetch(
-      `${API_BASE}/${namespace}/${id}/${version}/deactivate`,
+      `${getApiBase()}/${namespace}/${id}/${version}/deactivate`,
       {
         method: 'POST',
         headers: {
@@ -171,7 +181,7 @@ export class WorkflowApi {
     version: number,
     yaml: string
   ): Promise<WorkflowRevisionID> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}/${version}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}/${version}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/yaml',
@@ -196,7 +206,7 @@ export class WorkflowApi {
     id: string,
     version: number
   ): Promise<void> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}/${version}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}/${version}`, {
       method: 'DELETE',
     })
 
@@ -209,7 +219,7 @@ export class WorkflowApi {
    * Deletes all revisions of a workflow
    */
   async deleteWorkflow(namespace: string, id: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/${namespace}/${id}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}/${id}`, {
       method: 'DELETE',
     })
 
@@ -222,7 +232,7 @@ export class WorkflowApi {
    * Lists all workflows in a namespace
    */
   async listWorkflows(namespace: string): Promise<Array<{ namespace: string; id: string }>> {
-    const response = await fetch(`${API_BASE}/${namespace}`, {
+    const response = await fetch(`${getApiBase()}/${namespace}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -239,7 +249,7 @@ export class WorkflowApi {
    * Launches a workflow execution
    */
   async executeWorkflow(request: ExecutionRequest): Promise<ExecutionResponse> {
-    const response = await fetch(EXECUTION_API_BASE, {
+    const response = await fetch(getExecutionApiBase(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -259,7 +269,7 @@ export class WorkflowApi {
    * Gets execution details
    */
   async getExecution(executionId: string): Promise<ExecutionDetail> {
-    const response = await fetch(`${EXECUTION_API_BASE}/${executionId}`, {
+    const response = await fetch(`${getExecutionApiBase()}/${executionId}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -293,8 +303,8 @@ export class WorkflowApi {
 
     const queryString = params.toString()
     const url = queryString
-      ? `${API_BASE}/${namespace}/${id}/executions?${queryString}`
-      : `${API_BASE}/${namespace}/${id}/executions`
+      ? `${getApiBase()}/${namespace}/${id}/executions?${queryString}`
+      : `${getApiBase()}/${namespace}/${id}/executions`
 
     const response = await fetch(url, {
       headers: {

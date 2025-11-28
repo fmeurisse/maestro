@@ -1,0 +1,31 @@
+# Base Docker Compose configuration
+# This file contains common services shared between standalone and separated deployments
+# Do not use this file directly - use compose.standalone.yml or compose.separated.yml instead
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: maestro-postgres
+    environment:
+      POSTGRES_DB: maestro
+      POSTGRES_USER: maestro
+      POSTGRES_PASSWORD: maestro
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U maestro -d maestro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - maestro-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  maestro-network:
+    driver: bridge
