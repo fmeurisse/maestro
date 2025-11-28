@@ -132,6 +132,45 @@ class WorkflowResource @Inject constructor(
     }
 
     /**
+     * Lists all workflows in a namespace.
+     *
+     * Endpoint: GET /api/workflows/{namespace}
+     *
+     * Returns a list of all workflows (unique namespace+id combinations) in the specified namespace.
+     *
+     * @param namespace The workflow namespace
+     * @return 200 OK with list of workflow IDs (as JSON), or empty list if no workflows found
+     */
+    @GET
+    @Path(WORKFLOWS_NAMESPACE_PATH)
+    @Produces(MediaType.APPLICATION_JSON)
+    fun listWorkflows(
+        @Suppress("UnresolvedRestParam") @PathParam("namespace") namespace: String
+    ): Response {
+        logger.info { "Received list workflows request for namespace: $namespace" }
+
+        try {
+            val workflows = repository.listWorkflows(namespace)
+
+            // Convert to simple DTO format
+            val workflowList = workflows.map { workflowId ->
+                mapOf(
+                    "namespace" to workflowId.namespace,
+                    "id" to workflowId.id
+                )
+            }
+
+            logger.info { "Found ${workflows.size} workflows in namespace: $namespace" }
+            return Response.ok(workflowList).build()
+
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to list workflows in namespace $namespace: ${e.message}" }
+            // Return empty list instead of error to handle gracefully in UI
+            return Response.ok(emptyList<Map<String, String>>()).build()
+        }
+    }
+
+    /**
      * Lists all revisions of a workflow.
      *
      * Endpoint: GET /api/workflows/{namespace}/{id}
