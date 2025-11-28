@@ -1,6 +1,14 @@
 import type { WorkflowRevisionID, WorkflowListItem } from '../types/workflow'
+import type {
+  ExecutionRequest,
+  ExecutionResponse,
+  ExecutionDetail,
+  ExecutionHistoryResponse,
+  ExecutionStatus,
+} from '../types/execution'
 
 const API_BASE = '/api/workflows'
+const EXECUTION_API_BASE = '/api/executions'
 
 /**
  * Workflow Management API Client
@@ -208,6 +216,97 @@ export class WorkflowApi {
     if (!response.ok) {
       throw new Error(`Failed to delete workflow: ${response.statusText}`)
     }
+  }
+
+  /**
+   * Lists all workflows in a namespace
+   */
+  async listWorkflows(namespace: string): Promise<Array<{ namespace: string; id: string }>> {
+    const response = await fetch(`${API_BASE}/${namespace}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to list workflows: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  /**
+   * Launches a workflow execution
+   */
+  async executeWorkflow(request: ExecutionRequest): Promise<ExecutionResponse> {
+    const response = await fetch(EXECUTION_API_BASE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to execute workflow: ${response.statusText} - ${errorText}`)
+    }
+
+    return await response.json()
+  }
+
+  /**
+   * Gets execution details
+   */
+  async getExecution(executionId: string): Promise<ExecutionDetail> {
+    const response = await fetch(`${EXECUTION_API_BASE}/${executionId}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get execution: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  /**
+   * Gets execution history for a specific workflow
+   */
+  async getExecutionHistory(
+    namespace: string,
+    id: string,
+    filters?: {
+      version?: number
+      status?: ExecutionStatus
+      limit?: number
+      offset?: number
+    }
+  ): Promise<ExecutionHistoryResponse> {
+    const params = new URLSearchParams()
+    if (filters?.version !== undefined) params.append('version', filters.version.toString())
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.limit !== undefined) params.append('limit', filters.limit.toString())
+    if (filters?.offset !== undefined) params.append('offset', filters.offset.toString())
+
+    const queryString = params.toString()
+    const url = queryString
+      ? `${API_BASE}/${namespace}/${id}/executions?${queryString}`
+      : `${API_BASE}/${namespace}/${id}/executions`
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to get execution history: ${response.statusText}`)
+    }
+
+    return await response.json()
   }
 
   /**
