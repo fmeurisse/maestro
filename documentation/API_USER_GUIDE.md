@@ -1,14 +1,16 @@
  # Maestro API User Guide
 
- Last updated: 2025-11-25
+ Last updated: 2025-11-27
 
- This document describes the public REST API exposed by the Maestro API module. It is intended for API consumers integrating with Maestro to manage workflows and their revisions.
+ This document describes the public REST API exposed by the Maestro API module. It is intended for API consumers integrating with Maestro to manage workflows, execute them, and monitor their execution status.
 
  - Base URL: `http://localhost:8080`
- - Base path: `/api/workflows`
+ - Base paths:
+   - `/api/workflows` - Workflow management
+   - `/api/executions` - Workflow execution
  - Media types:
-   - Requests: `application/yaml` for workflow definitions
-   - Responses: `application/yaml` for workflow resources, `application/problem+json` for errors
+   - Requests: `application/yaml` for workflow definitions, `application/json` for executions
+   - Responses: `application/yaml` for workflow resources, `application/json` for executions, `application/problem+json` for errors
  - Authentication: Not required in the current development version (subject to change)
 
  ---
@@ -193,6 +195,118 @@
 
  ---
 
+ ## Workflow Execution Endpoints
+
+ All execution endpoints below are relative to the base path `/api/executions`.
+
+ ### 9) Execute a workflow
+ - Method: `POST`
+ - Path: `/api/executions`
+ - Request Content-Type: `application/json`
+ - Request Body:
+   ```json
+   {
+     "namespace": "my-namespace",
+     "id": "my-workflow",
+     "version": 1,
+     "parameters": {
+       "userName": "John",
+       "count": 42
+     }
+   }
+   ```
+ - Response: `200 OK`, JSON body with execution details
+ - Response includes:
+   - `executionId`: Unique identifier (21-character NanoID)
+   - `status`: Execution status (PENDING/RUNNING/COMPLETED/FAILED)
+   - `revisionId`: Reference to the workflow revision
+   - `inputParameters`: Validated input parameters
+   - `startedAt`: Execution start timestamp
+   - `_links`: HATEOAS links to related resources
+
+ Example:
+ ```bash
+ curl -i -X POST \
+   -H 'Content-Type: application/json' \
+   -d '{
+     "namespace": "my-ns",
+     "id": "my-workflow",
+     "version": 1,
+     "parameters": {"userName": "Alice", "age": 30}
+   }' \
+   http://localhost:8080/api/executions
+ ```
+
+ Notes:
+ - Parameters must match the types defined in the workflow revision
+ - Missing required parameters result in `400 Bad Request` with validation details
+ - Extra parameters not defined in the workflow result in `400 Bad Request`
+ - Non-existent workflow revision yields `404 Not Found`
+ - Workflow executes synchronously in the orchestrator (no async workers in v1)
+ - All execution state is persisted before returning the response
+
+ ### 10) Get execution status
+ - Method: `GET`
+ - Path: `/api/executions/{executionId}`
+ - Response: `200 OK`, JSON body with detailed execution status
+ - Response includes all fields from execution endpoint plus:
+   - `completedAt`: Completion timestamp (null if still running)
+   - `errorMessage`: Error details if execution failed
+   - `steps`: Array of step results with:
+     - `stepIndex`: Step position in execution sequence
+     - `stepId`: Step identifier from workflow
+     - `stepType`: Step type (Sequence, LogTask, WorkTask, etc.)
+     - `status`: Step status (COMPLETED/FAILED/SKIPPED)
+     - `inputData`: Step input context
+     - `outputData`: Step output (null if failed)
+     - `errorMessage` & `errorDetails`: Error info if failed
+     - `startedAt` & `completedAt`: Step timing
+
+ Example:
+ ```bash
+ curl -s -H 'Accept: application/json' \
+   http://localhost:8080/api/executions/abc123xyz456def789ghi
+ ```
+
+ Response example:
+ ```json
+ {
+   "executionId": "abc123xyz456def789ghi",
+   "status": "COMPLETED",
+   "revisionId": {
+     "namespace": "my-ns",
+     "workflowId": "my-workflow",
+     "version": 1
+   },
+   "inputParameters": {"userName": "Alice", "age": 30},
+   "startedAt": "2025-11-27T10:00:00Z",
+   "completedAt": "2025-11-27T10:00:05Z",
+   "steps": [
+     {
+       "stepIndex": 0,
+       "stepId": "log-start",
+       "stepType": "LogTask",
+       "status": "COMPLETED",
+       "inputData": {"userName": "Alice"},
+       "outputData": null,
+       "startedAt": "2025-11-27T10:00:00Z",
+       "completedAt": "2025-11-27T10:00:01Z"
+     }
+   ],
+   "_links": {
+     "self": "/api/executions/abc123xyz456def789ghi",
+     "workflow": "/api/workflows/my-ns/my-workflow/1"
+   }
+ }
+ ```
+
+ Notes:
+ - Invalid execution ID format results in `400 Bad Request`
+ - Non-existent execution yields `404 Not Found`
+ - Status queries complete in under 1 second
+
+ ---
+
  ## Usage Flows
 
  ### Create, activate, and read
@@ -208,11 +322,22 @@
  4. If active, `POST /{ns}/{id}/{version}/deactivate` first, then delete
  5. Delete entire workflow with `DELETE /{ns}/{id}` (ensure no active revisions)
 
+ ### Execute workflow and monitor progress
+ 1. Create and activate a workflow revision (see above)
+ 2. Execute with `POST /api/executions` (JSON body with namespace, id, version, parameters) → 200
+ 3. Retrieve execution ID from response
+ 4. Query status with `GET /api/executions/{executionId}` → 200
+ 5. Check `status` field (PENDING/RUNNING/COMPLETED/FAILED)
+ 6. Review `steps` array for step-by-step execution details
+ 7. If failed, examine `errorMessage` and step-level error details
+
  ---
 
  ## Headers Summary
- - `Content-Type: application/yaml` — for POST bodies
+ - `Content-Type: application/yaml` — for workflow definition POST bodies
+ - `Content-Type: application/json` — for execution POST bodies
  - `Accept: application/yaml` — to request YAML responses for workflow resources
+ - `Accept: application/json` — to request JSON responses for execution resources
  - `X-Current-Updated-At: <timestamp>` — required for activate/deactivate operations
 
  ---
@@ -224,6 +349,7 @@
  ---
 
  ## Changelog
- - 2025-11-25: Initial public documentation covering create/get/activate/deactivate/list/delete endpoints with optimistic locking and error handling.
+ - 2025-11-27: Added workflow execution endpoints (execute workflow, get execution status) with parameter validation and step-level tracking
+ - 2025-11-25: Initial public documentation covering create/get/activate/deactivate/list/delete endpoints with optimistic locking and error handling
 
  If you find inconsistencies or missing details, please open an issue or a PR updating `documentation/API_USER_GUIDE.md`.

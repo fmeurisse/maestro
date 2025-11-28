@@ -1,6 +1,6 @@
 # Maestro Developer Guide
 
-Last updated: 2025-11-25
+Last updated: 2025-11-27
 
 This guide helps contributors set up, build, test, and extend Maestro — a Kotlin-based workflow orchestration system using a multi-module Maven layout and Quarkus for the API.
 
@@ -14,6 +14,7 @@ This guide helps contributors set up, build, test, and extend Maestro — a Kotl
 - Coding Standards
 - API Development (Quarkus)
 - Domain & Core Development
+- Workflow Execution Development
 - UI Development
 - Database & Persistence
 - Troubleshooting
@@ -224,6 +225,163 @@ Guidelines:
 
 ---
 
+## Workflow Execution Development
+
+Location:
+- Execution domain models: `model/src/main/kotlin/io/maestro/model/execution/...`
+- Execution use cases: `core/src/main/kotlin/io/maestro/core/executions/usecases/...`
+- Step executor: `core/src/main/kotlin/io/maestro/core/executions/StepExecutor.kt`
+- Repository interface: `core/src/main/kotlin/io/maestro/core/executions/IWorkflowExecutionRepository.kt`
+- API resource: `api/src/main/kotlin/io/maestro/api/ExecutionResource.kt`
+
+### Execution System Architecture
+
+The execution system follows these key principles:
+
+1. **Synchronous Execution (v1)**: Workflows execute in the API request thread
+2. **Per-Step Commits**: Each step result is persisted immediately (checkpoint pattern)
+3. **Fail-Fast Strategy**: Execution stops on first step failure
+4. **Immutable Execution Records**: Core execution data cannot be modified after creation
+5. **Hierarchical Context**: ExecutionContext carries state through the workflow tree
+
+### Key Components
+
+**ExecuteWorkflowUseCase**: Orchestrates workflow execution
+- Validates workflow revision exists
+- Validates input parameters against schema
+- Creates execution record with RUNNING status
+- Executes workflow steps via StepExecutor
+- Updates execution status to COMPLETED or FAILED
+- Returns execution ID for status tracking
+
+**StepExecutor**: Wraps step execution with persistence
+- Executes steps and captures results
+- Persists step results immediately (per-step transaction)
+- Handles exceptions and converts to ExecutionStepResult.FAILED
+- Implements fail-fast strategy (stops on first failure)
+
+**ParameterValidator**: Validates input parameters
+- Type checking against schema
+- Required parameter validation
+- No extra parameters allowed
+- Default value handling
+
+### Adding New Step Types
+
+To add a new step type:
+
+1. Create step class in `model/src/main/kotlin/io/maestro/model/steps/`:
+   ```kotlin
+   data class MyNewTask(
+       override val stepId: String,
+       val myProperty: String
+   ) : Step {
+       override fun execute(context: ExecutionContext): Any? {
+           // Implementation
+           return result
+       }
+   }
+   ```
+
+2. Update YAML parser to recognize new step type (in workflow revision repository)
+
+3. Add unit tests in `model/src/test/kotlin/...`:
+   ```kotlin
+   class MyNewTaskUnitTest {
+       @Test
+       fun `execute performs expected behavior`() {
+           // Test step execution
+       }
+   }
+   ```
+
+4. Add integration tests in `api/src/test/kotlin/...` to verify end-to-end execution
+
+### Testing Execution Code
+
+**Unit Tests** (`*UnitTest.kt`):
+- Test individual step execution logic
+- Mock ExecutionContext for isolation
+- Test parameter validation rules
+- Test error handling and exceptions
+
+Example:
+```kotlin
+@Test
+fun `LogTask executes and returns null`() {
+    val context = ExecutionContext(
+        inputParameters = mapOf("userName" to "Alice"),
+        stepOutputs = emptyMap(),
+        stepExecutor = mockStepExecutor
+    )
+
+    val task = LogTask(stepId = "log-1", message = "Hello {userName}")
+    val result = task.execute(context)
+
+    assertThat(result).isNull()
+    // Verify logging occurred
+}
+```
+
+**Integration Tests** (`*IntegTest.kt`):
+- Test full workflow execution through API
+- Use Testcontainers for PostgreSQL
+- Test parameter validation with various inputs
+- Test execution status queries
+- Test error scenarios and recovery
+
+Example:
+```kotlin
+@QuarkusTest
+class ExecutionResourceIntegTest {
+    @Test
+    fun `POST executions with valid parameters returns 200`() {
+        // Create and activate workflow
+        // Execute workflow
+        // Verify execution status
+        // Verify step results
+    }
+}
+```
+
+### Performance Considerations
+
+Target metrics (from specifications):
+- **Execution Initiation**: < 2 seconds (SC-001)
+- **State Persistence**: All state persisted before returning (SC-002)
+- **Status Queries**: < 1 second (SC-003)
+
+Best practices:
+- Keep step execution logic fast (< 100ms per step for typical workflows)
+- Use per-step commits for durability but be aware of DB overhead
+- Eager load step results for status queries (acceptable for < 100 steps)
+- Consider async workers for long-running workflows (future enhancement)
+
+### Error Handling
+
+Always throw specific domain exceptions:
+- `ParameterValidationException` for invalid parameters
+- `WorkflowNotFoundException` for missing workflows
+- `ExecutionNotFoundException` for missing executions
+
+See `ERROR_HANDLING.md` for complete error handling guide.
+
+### Database Schema
+
+Execution data is stored in two tables:
+- `workflow_executions`: Execution records with status and error info
+- `execution_step_results`: Individual step results with inputs/outputs
+
+Key constraints:
+- Execution ID is immutable NanoID (21 chars)
+- Step indexes are contiguous starting from 0
+- Step results are append-only (never updated)
+- Error details stored as JSONB for flexible querying
+
+See `DATA_MODEL.md` for complete schema documentation.
+
+---
+
 ## UI Development
 
 Location:
@@ -243,7 +401,7 @@ Note: The UI module is described as a placeholder; check package.json for script
 
 ## Database & Persistence
 
-PostgreSQL 18 is the target DB in the 001-workflow-management spec. Persistence modules and migrations may live under `plugins/postgres` or API adapters.
+PostgreSQL 18 is the target DB for both workflow management (001) and execution (002). Persistence modules and migrations live under `plugins/postgres`.
 
 Recommendations:
 - Use Testcontainers for integration tests (`*IntegTest.kt`)
@@ -292,6 +450,8 @@ IDE cannot resolve symbols across modules:
 - Core use cases: `core/src/main/kotlin/io/maestro/core/usecase/...`
 - Model domain: `model/src/main/kotlin/io/maestro/model/...` (package may vary)
 - UI frontend: `ui/src/main/frontend`
-- Specs and contracts: `specs/001-workflow-management`
+- Execution use cases: `core/src/main/kotlin/io/maestro/core/executions/usecases/...`
+- Execution models: `model/src/main/kotlin/io/maestro/model/execution/...`
+- Specs and contracts: `specs/001-workflow-management`, `specs/002-workflow-execution`
 
 If something is unclear or missing in this guide, please open an issue or submit a PR updating `documentation/DEVELOPER_GUIDE.md`.
