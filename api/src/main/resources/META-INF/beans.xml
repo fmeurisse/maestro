@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="https://jakarta.ee/xml/ns/jakartaee"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd"
+       version="4.0"
+       bean-discovery-mode="annotated">
+    <!--
+      This file marks the API module JAR as a CDI bean archive so that
+      its beans are discoverable when used as a dependency by the app module.
+
+      bean-discovery-mode="annotated" keeps discovery limited to classes with
+      bean-defining annotations (e.g., @ApplicationScoped, @Singleton, @Path, etc.),
+      which matches Quarkus best practices.
+    -->
+</beans>
